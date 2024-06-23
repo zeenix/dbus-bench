@@ -1,7 +1,8 @@
 # D-Bus Broker Benchmarking
 
 This repository attempts to benchmark the performance of D-Bus brokers. It make simple method calls
-to its own service, using a single client and multiple simultaneous clients.
+to its own service, using a single and multiple simultaneous service & client pairs. Each pair share
+the same connection.
 
 ## Running the benchmark
 
@@ -17,11 +18,11 @@ DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus cargo run
 
 Here are the results obtained on my machine (AMD Ryzen 7 7840U w/ 8 cores & 16 threads, 64 GB RAM):
 
-| Broker        |      Version      | Single client (seconds) | 20 simultaneous clients (seconds) |
-|---------------|-------------------|-------------------------|-----------------------------------|
-| [dbus-broker] | 36                |        0.417053         |             6.757665              |
-| [dbus-daemon] | 1.14.10           |        0.439600         |             6.491848              |
-| [busd]        | 0.3.1<sup>1</sup> |        0.433934         |             6.666954              |
+| Broker        |      Version      | Single connection (seconds) | 20 connections (seconds) |
+|---------------|-------------------|-----------------------------|--------------------------|
+| [dbus-broker] | 36                |        0.417053             |        6.757665          |
+| [dbus-daemon] | 1.14.10           |        0.439600             |        6.491848          |
+| [busd]        | 0.3.1<sup>1</sup> |        0.433934             |        6.666954          |
 
 **Note**: If you run the benchmark on your machine, make sure that `busd` is built in release mode
 (`cargo run --release` if you build+run it yourself from the source).
