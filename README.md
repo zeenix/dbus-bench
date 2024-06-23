@@ -21,7 +21,7 @@ Here are the results obtained on my machine (AMD Ryzen 7 7840U w/ 8 cores & 16 t
 |---------------|-------------------|-------------------------|-----------------------------------|
 | [dbus-broker] | 36                |        0.417053         |             6.757665              |
 | [dbus-daemon] | 1.14.10           |        0.439600         |             6.491848              |
-| [busd]        | 0.3.1<sup>1</sup> |        0.422258         |             6.865709              |
+| [busd]        | 0.3.1<sup>1</sup> |        0.433934         |             6.666954              |
 
 **Note**: If you run the benchmark on your machine, make sure that `busd` is built in release mode
 (`cargo run --release` if you build+run it yourself from the source).
