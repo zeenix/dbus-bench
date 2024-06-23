@@ -26,7 +26,6 @@ Here are the results obtained on my machine (AMD Ryzen 7 7840U w/ 8 cores & 16 t
 **Note**: If you run the benchmark on your machine, make sure that `busd` is built in release mode
 (`cargo run --release` if you build+run it yourself from the source).
 
-
 1: Actually, git main branch (commit 14ec6693) on 2024-06-23.
 
 [dbus-broker]: https://github.com/bus1/dbus-broker
