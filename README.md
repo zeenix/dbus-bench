@@ -15,7 +15,7 @@ DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus cargo run
 
 ## Results
 
-Here are the results obtained on my machine (AMD Ryzen 7 7840U, 64 GB RAM):
+Here are the results obtained on my machine (AMD Ryzen 7 7840U w/ 8 cores & 16 threads, 64 GB RAM):
 
 | Broker        |      Version      | Single client | 20 simultaneous clients |
 |---------------|-------------------|---------------|-------------------------|
