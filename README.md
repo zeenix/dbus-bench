@@ -17,11 +17,15 @@ DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus cargo run
 
 Here are the results obtained on my machine (AMD Ryzen 7 7840U w/ 8 cores & 16 threads, 64 GB RAM):
 
-| Broker        |      Version      | Single client | 20 simultaneous clients |
-|---------------|-------------------|---------------|-------------------------|
-| [dbus-broker] | 36                |   0.417053    |        6.757665         |
-| [dbus-daemon] | 1.14.10           |   0.439600    |        6.491848         |
-| [busd]        | 0.3.1<sup>1</sup> |   0.634028    |        6.786934         |
+| Broker        |      Version      | Single client (seconds) | 20 simultaneous clients (seconds) |
+|---------------|-------------------|-------------------------|-------------------------|
+| [dbus-broker] | 36                |        0.417053         |        6.757665         |
+| [dbus-daemon] | 1.14.10           |        0.439600         |        6.491848         |
+| [busd]        | 0.3.1<sup>1</sup> |        0.422258         |        6.865709         |
+
+**Note**: If you run the benchmark on your machine, make sure that `busd` is built in release mode
+(`cargo run --release` if you build+run it yourself from the source).
+
 
 1: Actually, git main branch (commit 14ec6693) on 2024-06-23.
 
