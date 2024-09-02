@@ -7,7 +7,7 @@ struct Service;
     name = "org.dbus2.benchmark",
 )]
 impl Service {
-    fn take_byte_array(&self, _msg: ByteBuf) {}
+    fn take_byte_array(&self, _bytes: &serde_bytes::Bytes) {}
 }
 
 #[zbus::proxy(
