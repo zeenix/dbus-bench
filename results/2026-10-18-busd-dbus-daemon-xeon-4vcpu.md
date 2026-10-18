@@ -7,8 +7,9 @@ single client, but dbus-daemon was still faster with 20 clients. This looks into
 ways of closing the gap.
 
 Measured on real hardware since, on a Ryzen 7 7840U, the picture changes: busd is well ahead of
-dbus-daemon there, and the spin only shortens the single-client timing. See
-[busd on zruntime vs busd on Tokio, on a Ryzen 7 7840U](2026-10-18-busd-zruntime-ryzen-7840u.md).
+dbus-daemon there and level with dbus-broker, and the spin mostly shortens the single-client
+timing. See [busd against dbus-broker and dbus-daemon, on a Ryzen 7
+7840U](2026-10-18-busd-zruntime-ryzen-7840u.md).
 
 ## Summary
 
