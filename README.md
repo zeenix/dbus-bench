@@ -14,6 +14,10 @@ Simple run `cargo run` in the root of the repository. This will benchmark the ex
 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus cargo run
 ```
 
+To compare brokers, `scripts/compare-brokers.py` starts each of them, runs the benchmark against
+them a number of times in turn and reports statistics of the results (see its `--help`). The
+`results` directory holds comparisons made with it.
+
 ## Results
 
 Here are the results obtained on my machine (AMD Ryzen 7 7840U w/ 8 cores & 16 threads, 64 GB RAM):
