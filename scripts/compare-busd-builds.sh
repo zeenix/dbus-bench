@@ -1,7 +1,7 @@
 #!/bin/bash
 # Compares busd on Tokio, busd on zruntime and busd on zruntime with the experimental spin before
-# sleeping (see results/2026-10-18-busd-dbus-daemon-xeon-4vcpu.md), along with dbus-daemon, using
-# scripts/compare-brokers.py.
+# sleeping (see results/2026-10-18-busd-dbus-daemon-xeon-4vcpu.md), along with dbus-daemon and
+# dbus-broker, as far as they are installed, using scripts/compare-brokers.py.
 #
 # It expects checkouts of busd and zruntime under $CHECKOUT (default: ~/checkout), laid out as on
 # GitHub: $CHECKOUT/z-galaxy/busd and $CHECKOUT/z-galaxy/zruntime. They are left as they are,
@@ -30,6 +30,11 @@ zruntime_rev=cf3b321959f21428ae58e32e1a0bd1dd9edf4a9a
 have() {
     git -C "$1" cat-file -e "$4^{commit}" 2>/dev/null || git -C "$1" fetch -q "$2" "$3"
     git -C "$1" cat-file -e "$4^{commit}"
+}
+
+# The first line that the command prints, whatever becomes of the command.
+first_line() {
+    "$@" 2> /dev/null | sed -n 1p || true
 }
 
 # Exports the commit $2 of the repository $1 to the directory $3, unless it is there already.
@@ -70,13 +75,26 @@ brokers=(
     --broker busd-spin20
     "ZRUNTIME_SPIN_US=20 $work/busd-spin/target/release/busd --address {address}"
 )
+meta=(--meta "rustc=$(first_line rustc --version)")
 if command -v dbus-daemon > /dev/null; then
     brokers+=(--broker dbus-daemon "dbus-daemon --session --nofork --address={address}")
+    meta+=(--meta "dbus-daemon=$(first_line dbus-daemon --version)")
 else
     echo "dbus-daemon is not installed: leaving it out of the comparison." >&2
+fi
+# dbus-broker runs only under its launcher, which takes its socket from systemd's socket activation
+# and connects to the bus that $DBUS_SESSION_BUS_ADDRESS names, the one it launches here rather
+# than the desktop's: see scripts/compare-brokers.py.
+if command -v dbus-broker-launch > /dev/null && command -v systemd-socket-activate > /dev/null; then
+    launch="dbus-broker-launch --scope user"
+    brokers+=(--broker dbus-broker
+        "systemd-socket-activate -E DBUS_SESSION_BUS_ADDRESS={address} -l {path} $launch")
+    meta+=(--meta "dbus-broker=$(first_line dbus-broker --version)")
+else
+    echo "dbus-broker is not installed: leaving it out of the comparison." >&2
 fi
 
 cd "$bench"
 scripts/compare-brokers.py --bench target/release/dbus-bench --rounds "$rounds" \
-    --out "$work/results.json" "${brokers[@]}" | tee "$work/results.md"
+    --out "$work/results.json" "${meta[@]}" "${brokers[@]}" | tee "$work/results.md"
 echo "The results are in $work/results.md and $work/results.json."
