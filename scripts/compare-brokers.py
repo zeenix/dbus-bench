@@ -32,7 +32,7 @@ lines; read the broker's peak memory; stop the broker with SIGINT (SIGKILL after
 reap it; remove the temporary directory that held its socket.
 
 Recorded per run (``runs`` in the JSON file). The tables cover single_s, multi_s, broker_cpu_s,
-broker_maxrss_kib and client_cpu_s:
+broker_maxrss_kib, client_cpu_s, multi_broker_cpu_s and multi_client_cpu_s:
 
     single_s, multi_s   the two durations the client printed, in seconds
     broker_cpu_s        the broker's user + system CPU time over its whole life (also given as
@@ -49,6 +49,9 @@ broker_maxrss_kib and client_cpu_s:
     client_cpu_s        the client's user + system CPU time, from getrusage(RUSAGE_CHILDREN)
                         before and after it runs. Next to client_wall_s, it tells whether the
                         client was busy all along or waited for the broker.
+    multi_broker_cpu_s, the CPU time the broker and the client used during the multi-client
+    multi_client_cpu_s  phase alone, from /proc/PID/stat as the client prints the timing of
+                        each phase. They are counted in clock ticks (usually 10 ms each).
     client_vcsw,        how many times the client and the broker gave up the CPU to wait
     broker_vcsw         (voluntary context switches): each is a wait that found nothing to do,
                         so a process that is handed its messages in bigger batches waits less.
@@ -89,6 +92,7 @@ import statistics
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -98,6 +102,7 @@ ATTACH_TIMEOUT = 5.0  # seconds strace gets to attach to a broker
 STOP_TIMEOUT = 5.0  # seconds a broker gets to exit after SIGINT, and again after SIGKILL
 CLIENT_TIMEOUT = 600.0  # seconds the client gets to finish
 TICK = 0.01  # seconds between two checks while waiting for something
+CLOCK_TICKS = os.sysconf("SC_CLK_TCK")  # the unit of the CPU times in /proc/PID/stat
 
 # What the tables and the summary cover: (field of Run, unit, digits after the decimal point).
 METRICS = [
@@ -106,6 +111,8 @@ METRICS = [
     ("broker_cpu_s", "seconds", 3),
     ("broker_maxrss_kib", "KiB", 0),
     ("client_cpu_s", "seconds", 3),
+    ("multi_broker_cpu_s", "seconds", 3),
+    ("multi_client_cpu_s", "seconds", 3),
 ]
 
 # Rust's Debug output of a Duration: 211.73473ms, 2.725486666s, 1.5<micro sign>s, 800ns. The Greek
@@ -122,6 +129,19 @@ class RunError(Exception):
 
 
 @dataclass
+class ClientRun:
+    """What one run of the client measured."""
+
+    single_s: float
+    multi_s: float
+    wall_s: float
+    cpu_s: float
+    vcsw: int
+    multi_cpu_s: float | None
+    broker_multi_cpu_s: float | None
+
+
+@dataclass
 class Run:
     label: str
     round: int  # counted from 0, warmup rounds included
@@ -131,6 +151,8 @@ class Run:
     client_wall_s: float
     client_cpu_s: float
     client_vcsw: int
+    multi_client_cpu_s: float | None  # None if /proc could not tell
+    multi_broker_cpu_s: float | None
     broker_user_s: float
     broker_sys_s: float
     broker_cpu_s: float
@@ -309,37 +331,71 @@ def split_command(command: str, address: str) -> tuple[dict[str, str], list[str]
     return env, words
 
 
-def run_client(bench: str, address: str,
-               broker: Broker) -> tuple[float, float, float, float, int]:
-    """Run the client once.
-
-    Return the two durations it printed, its wall time, its CPU time and how many voluntary
-    context switches it made.
-    """
+def run_client(bench: str, address: str, broker: Broker, log_path: str) -> ClientRun:
+    """Run the client once, and measure it and the broker while it runs."""
     env = {**os.environ, "DBUS_SESSION_BUS_ADDRESS": address}
     # The client is the only child reaped in between, so the difference is its own usage.
     before = resource.getrusage(resource.RUSAGE_CHILDREN)
     start = time.perf_counter()
-    try:
-        done = subprocess.run(
-            [bench], env=env, stdin=subprocess.DEVNULL, capture_output=True,
-            encoding="utf-8", errors="replace", timeout=CLIENT_TIMEOUT,
+    with open(log_path, "wb") as stderr:
+        client = subprocess.Popen(
+            [bench], env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=stderr,
+            encoding="utf-8", errors="replace",
         )
-    except subprocess.TimeoutExpired:
-        raise RunError(f"client still running after {CLIENT_TIMEOUT:g}s") from None
+    watchdog = threading.Timer(CLIENT_TIMEOUT, client.kill)
+    watchdog.start()
+    output = []
+    # The CPU times of the client and of the broker as each phase ends, as the client prints its
+    # timing line: the multi-client phase starts right after the single-client line.
+    marks = {}
+    try:
+        for line in client.stdout:
+            output.append(line)
+            for phase, pattern in (("single", SINGLE_LINE), ("multi", MULTI_LINE)):
+                if pattern.match(line):
+                    marks[phase] = (cpu_seconds(client.pid), cpu_seconds(broker.pid))
+        client.wait()
+    finally:
+        watchdog.cancel()
+        if client.poll() is None:
+            client.kill()
+            client.wait()
     wall = time.perf_counter() - start
     after = resource.getrusage(resource.RUSAGE_CHILDREN)
-    cpu = (after.ru_utime - before.ru_utime) + (after.ru_stime - before.ru_stime)
-    if done.returncode != 0:
-        raise RunError(f"client exited with status {done.returncode}:\n{tail(done.stderr)}\n"
-                       f"broker log:\n{read_tail(broker.log_path)}")
+    stdout = "".join(output)
+    if wall >= CLIENT_TIMEOUT:
+        raise RunError(f"client still running after {CLIENT_TIMEOUT:g}s")
+    if client.returncode != 0:
+        raise RunError(f"client exited with status {client.returncode}:\n"
+                       f"{read_tail(log_path)}\nbroker log:\n{read_tail(broker.log_path)}")
     durations = []
     for what, pattern in (("single-client", SINGLE_LINE), ("multi-client", MULTI_LINE)):
-        match = pattern.search(done.stdout)
+        match = pattern.search(stdout)
         if not match:
-            raise RunError(f"no {what} timing line in the client's output:\n{tail(done.stdout)}")
+            raise RunError(f"no {what} timing line in the client's output:\n{tail(stdout)}")
         durations.append(float(match[1]) * SECONDS_PER[match[2]])
-    return durations[0], durations[1], wall, cpu, after.ru_nvcsw - before.ru_nvcsw
+    multi = [None, None]
+    if "single" in marks and "multi" in marks:
+        multi = [None if a is None or b is None else b - a
+                 for a, b in zip(marks["single"], marks["multi"])]
+    return ClientRun(
+        single_s=durations[0], multi_s=durations[1], wall_s=wall,
+        cpu_s=(after.ru_utime - before.ru_utime) + (after.ru_stime - before.ru_stime),
+        vcsw=after.ru_nvcsw - before.ru_nvcsw, multi_cpu_s=multi[0],
+        broker_multi_cpu_s=multi[1],
+    )
+
+
+def cpu_seconds(pid: int) -> float | None:
+    """The CPU time (user + system) the process has used so far, its threads included."""
+    try:
+        with open(f"/proc/{pid}/stat") as f:
+            # The command name, in parentheses, can hold anything: count the fields after it.
+            fields = f.read().rpartition(")")[2].split()
+    except OSError:
+        return None
+    # utime and stime are the 14th and 15th fields, the 12th and 13th after the command name.
+    return (int(fields[11]) + int(fields[12])) / CLOCK_TICKS
 
 
 def run_once(label: str, command: str, bench: str, rnd: int, warmup: bool,
@@ -360,18 +416,19 @@ def run_once(label: str, command: str, bench: str, rnd: int, warmup: bool,
                 tracer = stack.enter_context(Tracer(
                     broker.pid, os.path.join(strace_dir, f"{name}-round{rnd}.txt"),
                     os.path.join(tmp, "strace.log")))
-            single, multi, wall, client_cpu, client_vcsw = run_client(bench, address, broker)
+            client = run_client(bench, address, broker, os.path.join(tmp, "client.log"))
             peak_kib = broker.peak_rss_kib()
             if tracer:
                 tracer.stop()  # detach and write the summary before the broker goes away
             broker.stop()
         ru = broker.rusage
         return Run(
-            label=label, round=rnd, warmup=warmup, single_s=single, multi_s=multi,
-            client_wall_s=wall, client_cpu_s=client_cpu, client_vcsw=client_vcsw,
-            broker_user_s=ru.ru_utime, broker_sys_s=ru.ru_stime,
-            broker_cpu_s=ru.ru_utime + ru.ru_stime, broker_vcsw=ru.ru_nvcsw,
-            broker_maxrss_kib=peak_kib,
+            label=label, round=rnd, warmup=warmup, single_s=client.single_s,
+            multi_s=client.multi_s, client_wall_s=client.wall_s, client_cpu_s=client.cpu_s,
+            client_vcsw=client.vcsw, multi_client_cpu_s=client.multi_cpu_s,
+            multi_broker_cpu_s=client.broker_multi_cpu_s, broker_user_s=ru.ru_utime,
+            broker_sys_s=ru.ru_stime, broker_cpu_s=ru.ru_utime + ru.ru_stime,
+            broker_vcsw=ru.ru_nvcsw, broker_maxrss_kib=peak_kib,
             broker_ru_maxrss_kib=ru.ru_maxrss, broker_exit=broker.status,
         )
     finally:
