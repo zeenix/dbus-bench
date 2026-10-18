@@ -31,8 +31,8 @@ Each run: start the broker; wait until it accepts connections; run the client an
 lines; read the broker's peak memory; stop the broker with SIGINT (SIGKILL after 5 seconds) and
 reap it; remove the temporary directory that held its socket.
 
-Recorded per run (``runs`` in the JSON file). The tables cover single_s, multi_s, broker_cpu_s
-and broker_maxrss_kib:
+Recorded per run (``runs`` in the JSON file). The tables cover single_s, multi_s, broker_cpu_s,
+broker_maxrss_kib and client_cpu_s:
 
     single_s, multi_s   the two durations the client printed, in seconds
     broker_cpu_s        the broker's user + system CPU time over its whole life (also given as
@@ -46,6 +46,12 @@ and broker_maxrss_kib:
                         never falls below this script's own peak (over 10 MiB) and every small
                         broker looks alike.
     client_wall_s       wall time of the whole client process, start-up included
+    client_cpu_s        the client's user + system CPU time, from getrusage(RUSAGE_CHILDREN)
+                        before and after it runs. Next to client_wall_s, it tells whether the
+                        client was busy all along or waited for the broker.
+    client_vcsw,        how many times the client and the broker gave up the CPU to wait
+    broker_vcsw         (voluntary context switches): each is a wait that found nothing to do,
+                        so a process that is handed its messages in bigger batches waits less.
     broker_exit         the broker's exit status, negative if a signal killed it (busd exits 0
                         on SIGINT, dbus-daemon is killed by it: -2)
 
@@ -74,6 +80,7 @@ import os
 import platform
 import random
 import re
+import resource
 import shlex
 import shutil
 import signal
@@ -98,6 +105,7 @@ METRICS = [
     ("multi_s", "seconds", 3),
     ("broker_cpu_s", "seconds", 3),
     ("broker_maxrss_kib", "KiB", 0),
+    ("client_cpu_s", "seconds", 3),
 ]
 
 # Rust's Debug output of a Duration: 211.73473ms, 2.725486666s, 1.5<micro sign>s, 800ns. The Greek
@@ -121,9 +129,12 @@ class Run:
     single_s: float
     multi_s: float
     client_wall_s: float
+    client_cpu_s: float
+    client_vcsw: int
     broker_user_s: float
     broker_sys_s: float
     broker_cpu_s: float
+    broker_vcsw: int
     broker_maxrss_kib: int | None  # VmHWM from /proc, None if that could not be read
     broker_ru_maxrss_kib: int  # ru_maxrss from wait4(): see the module docstring
     broker_exit: int
@@ -298,9 +309,16 @@ def split_command(command: str, address: str) -> tuple[dict[str, str], list[str]
     return env, words
 
 
-def run_client(bench: str, address: str, broker: Broker) -> tuple[float, float, float]:
-    """Run the client once: return the two durations it printed and its own wall time."""
+def run_client(bench: str, address: str,
+               broker: Broker) -> tuple[float, float, float, float, int]:
+    """Run the client once.
+
+    Return the two durations it printed, its wall time, its CPU time and how many voluntary
+    context switches it made.
+    """
     env = {**os.environ, "DBUS_SESSION_BUS_ADDRESS": address}
+    # The client is the only child reaped in between, so the difference is its own usage.
+    before = resource.getrusage(resource.RUSAGE_CHILDREN)
     start = time.perf_counter()
     try:
         done = subprocess.run(
@@ -310,6 +328,8 @@ def run_client(bench: str, address: str, broker: Broker) -> tuple[float, float, 
     except subprocess.TimeoutExpired:
         raise RunError(f"client still running after {CLIENT_TIMEOUT:g}s") from None
     wall = time.perf_counter() - start
+    after = resource.getrusage(resource.RUSAGE_CHILDREN)
+    cpu = (after.ru_utime - before.ru_utime) + (after.ru_stime - before.ru_stime)
     if done.returncode != 0:
         raise RunError(f"client exited with status {done.returncode}:\n{tail(done.stderr)}\n"
                        f"broker log:\n{read_tail(broker.log_path)}")
@@ -319,7 +339,7 @@ def run_client(bench: str, address: str, broker: Broker) -> tuple[float, float, 
         if not match:
             raise RunError(f"no {what} timing line in the client's output:\n{tail(done.stdout)}")
         durations.append(float(match[1]) * SECONDS_PER[match[2]])
-    return durations[0], durations[1], wall
+    return durations[0], durations[1], wall, cpu, after.ru_nvcsw - before.ru_nvcsw
 
 
 def run_once(label: str, command: str, bench: str, rnd: int, warmup: bool,
@@ -340,7 +360,7 @@ def run_once(label: str, command: str, bench: str, rnd: int, warmup: bool,
                 tracer = stack.enter_context(Tracer(
                     broker.pid, os.path.join(strace_dir, f"{name}-round{rnd}.txt"),
                     os.path.join(tmp, "strace.log")))
-            single, multi, wall = run_client(bench, address, broker)
+            single, multi, wall, client_cpu, client_vcsw = run_client(bench, address, broker)
             peak_kib = broker.peak_rss_kib()
             if tracer:
                 tracer.stop()  # detach and write the summary before the broker goes away
@@ -348,8 +368,10 @@ def run_once(label: str, command: str, bench: str, rnd: int, warmup: bool,
         ru = broker.rusage
         return Run(
             label=label, round=rnd, warmup=warmup, single_s=single, multi_s=multi,
-            client_wall_s=wall, broker_user_s=ru.ru_utime, broker_sys_s=ru.ru_stime,
-            broker_cpu_s=ru.ru_utime + ru.ru_stime, broker_maxrss_kib=peak_kib,
+            client_wall_s=wall, client_cpu_s=client_cpu, client_vcsw=client_vcsw,
+            broker_user_s=ru.ru_utime, broker_sys_s=ru.ru_stime,
+            broker_cpu_s=ru.ru_utime + ru.ru_stime, broker_vcsw=ru.ru_nvcsw,
+            broker_maxrss_kib=peak_kib,
             broker_ru_maxrss_kib=ru.ru_maxrss, broker_exit=broker.status,
         )
     finally:
