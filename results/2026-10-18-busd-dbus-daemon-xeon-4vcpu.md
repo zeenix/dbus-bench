@@ -121,6 +121,9 @@ comes. Neither is something that busd would want to copy.
   on spinning, and keep its CPU out of deep idle states for that long. That makes it something to
   turn on where it pays, or to do adaptively, such as spinning only while the bus is busy, judged
   by how short its last sleep was. Either way, it is a change to zruntime, not to busd.
+  [zruntime's busy polling, measured on busd](2026-10-18-zruntime-busy-poll-xeon-4vcpu.md) does it
+  adaptively, and measures as fast as the spin under load, for no more CPU time than without it
+  under light load.
 
 ## Files
 
