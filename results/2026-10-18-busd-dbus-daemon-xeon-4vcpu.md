@@ -130,4 +130,4 @@ comes. Neither is something that busd would want to copy.
 * [`perf`](2026-10-18-busd-dbus-daemon-xeon-4vcpu/perf): the profiles' summaries and the two call
   chains.
 * [`patches`](2026-10-18-busd-dbus-daemon-xeon-4vcpu/patches): the two experimental changes,
-  against busd at f0444f9 and zruntime 0.2.0. Neither is meant to be merged as it is.
+  against busd at 0d22862 and zruntime 0.2.0. Neither is meant to be merged as it is.

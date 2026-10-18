@@ -35,7 +35,7 @@ runtime of one thread), built in release mode and unchanged. The brokers:
 * busd-tokio-1w: the same binary, with `TOKIO_WORKER_THREADS=1`.
 * busd-tokio-ct: busd at 840d728, with `#[tokio::main(flavor = "current_thread")]`.
 * busd-zruntime: busd ported to zruntime, the `ccr-71f9417f-wbfql4` branch of zeenix/busd at
-  f0444f9. It runs on zbus 6.0.0 with its `default-rt` feature, and on zruntime 0.2.0.
+  0d22862. It runs on zbus 6.0.0 with its `default-rt` feature, and on zruntime 0.2.0.
 * dbus-daemon: dbus-daemon 1.14.10, as the distribution builds it, for reference.
 
 Every busd binary was built with rustc 1.97.0 and busd's release profile (fat LTO, `opt-level =

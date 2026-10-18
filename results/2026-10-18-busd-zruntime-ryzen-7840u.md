@@ -57,7 +57,7 @@ times the broker gave up the CPU to wait (voluntary context switches) over the w
 | dbus-broker | 0.082 (0.077–0.091) | 0.930 (0.911–1.051) | 0.41 | 44% | 99% | 59,451 | 7.86 |
 
 * busd-tokio: busd at 840d728, on Tokio's multi-thread runtime.
-* busd-zruntime: busd ported to zruntime, at f0444f9.
+* busd-zruntime: busd ported to zruntime, at 0d22862.
 * busd-spin0 and busd-spin20: the port built against zruntime 0.2.0 with the experimental spin of
   [`zruntime-spin.diff`](2026-10-18-busd-dbus-daemon-xeon-4vcpu/patches/zruntime-spin.diff), off
   and at 20 µs. busd-spin0 measures as busd-zruntime does, as it should.

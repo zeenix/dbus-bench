@@ -23,7 +23,7 @@ spin_patch=$bench/results/2026-10-18-busd-dbus-daemon-xeon-4vcpu/patches/zruntim
 # The commits measured: busd's main branch, on Tokio; the port of busd to zruntime; and zruntime
 # 0.2.0, which the port runs on.
 tokio_rev=840d728740fce72176c6151b433f6896c0a462d7
-port_rev=f0444f994898644f617bb4260d63678eeb119d0c
+port_rev=0d2286266648e9f1b3729e01b17408ee4a03bfd7
 zruntime_rev=cf3b321959f21428ae58e32e1a0bd1dd9edf4a9a
 
 # Makes sure that the repository $1 has the commit $4, by fetching $3 from $2 if it lacks it.
@@ -46,7 +46,9 @@ export_rev() {
 }
 
 have "$busd" https://github.com/z-galaxy/busd main $tokio_rev
-have "$busd" https://github.com/zeenix/busd ccr-71f9417f-wbfql4 $port_rev
+# The port is on the branch of its pull request, and on busd's main branch once that is merged.
+have "$busd" https://github.com/z-galaxy/busd main $port_rev 2> /dev/null ||
+    have "$busd" https://github.com/zeenix/busd ccr-71f9417f-wbfql4 $port_rev
 have "$zruntime" https://github.com/z-galaxy/zruntime refs/tags/zruntime-0.2.0 $zruntime_rev
 
 export_rev "$busd" $tokio_rev "$work/busd-tokio"
