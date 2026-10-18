@@ -72,6 +72,8 @@ brokers=(
 )
 if command -v dbus-daemon > /dev/null; then
     brokers+=(--broker dbus-daemon "dbus-daemon --session --nofork --address={address}")
+else
+    echo "dbus-daemon is not installed: leaving it out of the comparison." >&2
 fi
 
 cd "$bench"
