@@ -6,6 +6,10 @@ measured later the same day. In that comparison, busd on zruntime was the fastes
 single client, but dbus-daemon was still faster with 20 clients. This looks into why, and at two
 ways of closing the gap.
 
+Measured on real hardware since, on a Ryzen 7 7840U, the picture changes: busd is well ahead of
+dbus-daemon there, and the spin only shortens the single-client timing. See
+[busd on zruntime vs busd on Tokio, on a Ryzen 7 7840U](2026-10-18-busd-zruntime-ryzen-7840u.md).
+
 ## Summary
 
 * dbus-daemon is not faster at routing messages. In the 20-client phase it spends 0.98 s of CPU

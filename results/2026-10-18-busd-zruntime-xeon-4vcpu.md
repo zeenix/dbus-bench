@@ -137,3 +137,7 @@ the default build left out, is gone, and with it the crates that only it pulled 
 the client and the brokers, which explains why the client needs more CPU time with some brokers
 than with others, and tries two ways of closing the gap with dbus-daemon: more threads, which make
 busd slower, and spinning in zruntime before it goes to sleep, which puts busd ahead.
+
+[busd on zruntime vs busd on Tokio, on a Ryzen 7 7840U](2026-10-18-busd-zruntime-ryzen-7840u.md)
+compares the same builds on real hardware. There, busd on zruntime takes about as long as busd on
+Tokio, for less than half its CPU time, and both are well ahead of dbus-daemon.
