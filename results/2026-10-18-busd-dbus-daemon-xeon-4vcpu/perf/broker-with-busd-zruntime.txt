@@ -1,0 +1,37 @@
+# perf report --no-children -g none -n --sort dso,sym (perf record -F 1999 -g, one run)
+# Total Lost Samples: 0
+# Samples: 1K of event 'task-clock:ppp'
+# Overhead       Samples  Shared Object
+    52.22%           859  [kernel.kallsyms]
+    42.67%           702  prof-busd-zruntime
+
+    19.15%           315  [k] finish_task_switch.isra.0
+     4.19%            69  [k] _raw_spin_unlock_irqrestore
+     4.07%            67  [k] _copy_to_iter
+     2.25%            37  [.] <std::sync::poison::mutex::Mutex<alloc::sync::Weak<zruntime::runtime::Core<zruntime::mode::Shared>>>>::lock
+     2.01%            33  [k] shuffle_freelist
+     1.88%            31  [k] do_syscall_64
+     1.82%            30  [.] _RINvNtCscI6d9CVNmLh_4core3ptr9drop_glueINtNtNtNtCsgczF5crJ4sT_3std4sync6poison5mutex10MutexGuardINtNtCs40k4W9msRzi_5alloc3vec3Vec
+     1.64%            27  [.] _RNvXs1_NtNtNtCscI6d9CVNmLh_4core3ops8function5implsQNCNCINvMNtNtCs5EdaEZCgme2_4zbus7runtime2ioINtBW_12RegisteredIoNtNtBW_4unix7Un
+     1.46%            24  [.] malloc
+     1.40%            23  [.] _RINvXs_NtNtNtCs5EdaEZCgme2_4zbus4wire4dbus2deQINtB5_12DeserializerNtNtB9_2fd2FdENtNtCsdmL2MbJzaOK_10serde_core2de12Deserializer15
+     1.22%            20  [.] _RINvXs_NtNtNtCs5EdaEZCgme2_4zbus4wire4dbus2deQINtB5_12DeserializerNtNtB9_2fd2FdENtNtCsdmL2MbJzaOK_10serde_core2de12Deserializer15
+     1.16%            19  [.] _RNCNvXs3_NtNtCs5EdaEZCgme2_4zbus7runtime2ioINtNtCs40k4W9msRzi_5alloc4sync3ArcINtB7_12RegisteredIoNtNtB7_4unix7UnixOpsEENtNtNtBb_1
+     1.16%            19  [k] _copy_from_iter
+     1.09%            18  [.] zbus_utils::signature::parse::parse_signature
+     1.09%            18  [k] _raw_spin_lock
+     1.03%            17  [.] zruntime::scheduler::task::<zruntime::mode::Shared, <busd::peers::Peers>::serve_peer::{closure#0}>::{closure#0}
+     0.91%            15  [.] cfree@GLIBC_2.2.5
+     0.85%            14  [.] <zbus::wire::variant::ValueVisitor as serde_core::de::Visitor>::visit_seq::<zbus::wire::dbus::de::ValueDeserializer<zbus::wire::fd
+     0.85%            14  [k] fdget
+     0.79%            13  [.] <zbus::connection::socket_reader::SocketReader>::receive_msg::{closure#0}::{closure#0}
+     0.79%            13  [.] _RNCNvYINtNtCs40k4W9msRzi_5alloc4sync3ArcINtNtNtCs5EdaEZCgme2_4zbus7runtime2io12RegisteredIoNtNtBF_4unix7UnixOpsEENtNtNtBJ_10conne
+     0.79%            13  [.] <zruntime::runtime::Core<zruntime::mode::Shared>>::wait
+     0.79%            13  [.] <zbus::wire::de::DeserializerCommon<zbus::wire::fd::Fd>>::parse_padding
+     0.79%            13  [.] <zbus_utils::signature::Signature as core::clone::Clone>::clone.2173
+     0.79%            13  [.] __memset_avx512_unaligned_erms
+     0.79%            13  [k] _raw_spin_unlock_irq
+     0.73%            12  [.] <busd::peers::Peers>::send_msg_to_unique_name::{closure#0}
+     0.73%            12  [k] __memcg_slab_free_hook
+     0.73%            12  [k] unix_stream_read_generic
+     0.67%            11  [.] _RINvMs1_NtCsfKiFC1ztrmh_9hashbrown3mapINtB6_7HashMapjINtNtCslg8UoHMbYnu_8zruntime7reactor11SourceStateNtNtBU_4mode6SharedENtNtNtC

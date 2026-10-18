@@ -1,0 +1,134 @@
+--- a/src/bus/mod.rs	2026-10-18 01:45:13.199201654 +0000
++++ b/src/bus/mod.rs	2026-10-18 10:57:02.881390278 +0000
+@@ -1,6 +1,13 @@
+ use crate::{debug, info, trace, warn};
+-use anyhow::{bail, Ok, Result};
+-use std::{env, path::Path, str::FromStr, sync::Arc};
++use anyhow::{bail, Context, Ok, Result};
++use std::{
++    env,
++    future::pending,
++    path::Path,
++    str::FromStr,
++    sync::{mpsc, Arc},
++    thread,
++};
+ use zbus::{
+     address::{
+         transport::{Tcp, Unix, UnixSocket},
+@@ -21,11 +28,19 @@
+ /// The bus, and every connection it serves, runs on [zruntime]. Create and run it from inside
+ /// [`zruntime::block_on`], so that the calling thread runs all of them, on its own runtime.
+ ///
++/// EXPERIMENTAL: with the `BUSD_THREADS` environment variable set to a number `N` above zero, the
++/// bus starts `N` worker threads, each driving a runtime of its own, and spreads the connections
++/// it accepts over them by their ids. The accept loop and the bus's own connection stay on the
++/// runtime of the calling thread.
++///
+ /// [zruntime]: https://docs.rs/zruntime
+ #[derive(Debug)]
+ pub struct Bus {
+     inner: Inner,
+     listener: Listener,
++    /// The runtimes of the worker threads, or none to serve every connection on the runtime of
++    /// the calling thread.
++    workers: Vec<SharedRuntime>,
+ }
+ 
+ // All (cheaply) cloneable fields of `Bus` go here.
+@@ -47,6 +62,8 @@
+ 
+ impl Bus {
+     pub async fn for_address(address: Option<&str>) -> Result<Self> {
++        // First, so that a bad value fails before the socket is bound.
++        let workers = Self::start_workers(Self::worker_count()?)?;
+         let mut address = match address {
+             Some(address) => Address::from_str(address)?,
+             None => Address::from_str(&default_address())?,
+@@ -114,9 +131,59 @@
+                 auth_mechanism,
+                 _self_conn: service_conn,
+             },
++            workers,
+         })
+     }
+ 
++    /// The number of worker threads that `BUSD_THREADS` asks for: none if it is unset, empty or 0.
++    fn worker_count() -> Result<usize> {
++        let threads = env::var("BUSD_THREADS").unwrap_or_default();
++        let threads = threads.trim();
++        if threads.is_empty() {
++            return Ok(0);
++        }
++
++        threads
++            .parse()
++            .with_context(|| format!("invalid BUSD_THREADS `{threads}`"))
++    }
++
++    /// Start `count` threads, each of which drives a runtime of its own for good, and return those
++    /// runtimes.
++    ///
++    /// A runtime is made by `block_on` on the thread that drives it, and `SharedRuntime::current`
++    /// inside it gives that one. Whatever a task of such a runtime builds then lands on it too:
++    /// the free `spawn`, and zbus's connections, which resolve their runtime the same way.
++    fn start_workers(count: usize) -> Result<Vec<SharedRuntime>> {
++        let (sender, receiver) = mpsc::channel();
++        for i in 0..count {
++            let sender = sender.clone();
++            thread::Builder::new()
++                .name(format!("busd worker {i}"))
++                .spawn(move || {
++                    zruntime::block_on(async move {
++                        let _ = sender.send((i, SharedRuntime::current()));
++                        pending::<()>().await
++                    })
++                })
++                .context("failed to start a worker thread")?;
++        }
++        drop(sender);
++
++        // Blocks the thread for the time that the workers take to start, but waits for no work of
++        // the runtime this thread is in, so it cannot deadlock.
++        let mut workers = Vec::with_capacity(count);
++        for _ in 0..count {
++            let (i, runtime) = receiver
++                .recv()
++                .context("a worker thread stopped before it gave its runtime")?;
++            workers.push((i, runtime?));
++        }
++        workers.sort_by_key(|(i, _)| *i);
++
++        Ok(workers.into_iter().map(|(_, runtime)| runtime).collect())
++    }
++
+     pub fn address(&self) -> &Address {
+         &self.inner.address
+     }
+@@ -209,7 +276,7 @@
+ 
+         let id = self.next_id();
+         let inner = self.inner.clone();
+-        spawn(async move {
++        let setup = async move {
+             let builder = socket.into_builder();
+             let res = inner
+                 .peers
+@@ -219,8 +286,15 @@
+             if let Err(e) = res {
+                 warn!("Failed to establish connection: {}", e);
+             }
+-        })
+-        .detach();
++        };
++        // Everything the setup builds, zbus's socket reader for the connection and the task that
++        // serves the peer, lands on the runtime that runs the setup: the worker's, if there is one.
++        if self.workers.is_empty() {
++            spawn(setup).detach();
++        } else {
++            let worker = &self.workers[id % self.workers.len()];
++            worker.spawn("peer", setup).detach();
++        }
+ 
+         Ok(())
+     }

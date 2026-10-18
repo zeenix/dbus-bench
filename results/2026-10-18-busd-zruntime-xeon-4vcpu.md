@@ -118,9 +118,22 @@ futex calls of busd-tokio are the wake-ups between its threads. Those of busd-zr
 waits of the one thread it keeps for blocking work, which binds the socket at start-up and then
 has nothing to do.
 
-## Not done
+### Size of the binary
 
-* zruntime itself was not changed: neither the system calls nor the CPU times pointed at anything
-  in it to improve.
-* A profile of the client, which would explain why it needs more CPU time with some brokers than
-  with others.
+| | busd-tokio | busd-zruntime | Change |
+|---|---:|---:|---:|
+| Release binary, bytes | 1,983,168 | 1,866,512 | -116,656 (-5.9%) |
+| Code (text section), bytes | 1,905,834 | 1,795,593 | -110,241 (-5.8%) |
+| Crates compiled | 59 | 55 | -4 |
+
+Both binaries are stripped, as busd's release profile has it. The port takes tokio, tokio-macros,
+mio, event-listener and parking out of the crates that are compiled, and adds signal-hook. The
+lock file shrinks from 190 packages to 129, mostly because the console-subscriber feature, which
+the default build left out, is gone, and with it the crates that only it pulled in.
+
+## Follow-up
+
+[Why dbus-daemon leads busd with 20 clients](2026-10-18-busd-dbus-daemon-xeon-4vcpu.md) profiles
+the client and the brokers, which explains why the client needs more CPU time with some brokers
+than with others, and tries two ways of closing the gap with dbus-daemon: more threads, which make
+busd slower, and spinning in zruntime before it goes to sleep, which puts busd ahead.
