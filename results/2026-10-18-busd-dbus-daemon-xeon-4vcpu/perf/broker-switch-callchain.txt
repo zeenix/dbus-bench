@@ -1,0 +1,22 @@
+# Where the broker's finish_task_switch samples come from (busd-zruntime):
+    19.15%  prof-busd-zrunt  [kernel.kallsyms]  [k] finish_task_switch.isra.0
+            |
+            ---_start
+               __libc_start_main@@GLIBC_2.34
+               __libc_start_call_main
+               main
+               std::sys::backtrace::__rust_begin_short_backtrace::<fn() -> core::result::Result<(), anyhow::Error>, core::result::Result<(), anyhow::Error>>
+               busd::main
+               <zruntime::runtime::Core<zruntime::mode::Shared>>::wait
+               entry_SYSCALL_64_after_hwframe
+               do_syscall_64
+               x64_sys_call
+               __x64_sys_epoll_pwait
+               do_epoll_pwait.part.0
+               do_epoll_wait
+               ep_poll
+               schedule_hrtimeout_range
+               schedule_hrtimeout_range_clock
+               schedule
+               __schedule
+               finish_task_switch.isra.0

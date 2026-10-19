@@ -1,0 +1,39 @@
+# Where the client's _raw_spin_unlock_irqrestore samples come from (client with busd-zruntime):
+# perf report --no-children -G --symbol-filter=_raw_spin_unlock_irqrestore
+    10.28%  prof-dbus-bench  [kernel.kallsyms]  [k] _raw_spin_unlock_irqrestore
+            |
+            ---_start
+               __libc_start_main@@GLIBC_2.34
+               __libc_start_call_main
+               main
+               std::rt::lang_start_internal
+               std::rt::lang_start::<core::result::Result<(), alloc::boxed::Box<dyn core::error::Error>>>::{closure#0}
+               std::sys::backtrace::__rust_begin_short_backtrace::<fn() -> core::result::Result<(), alloc::boxed::Box<dyn core::error::Error>>, core::result::Re
+               dbus_bench::main
+               |
+                --10.25%--<tokio::runtime::runtime::Runtime>::block_on::<dbus_bench::main::{closure#0}>
+                          <tokio::runtime::scheduler::current_thread::CurrentThread>::block_on::<dbus_bench::main::{closure#0}>
+                          |
+                           --5.39%--tokio::runtime::task::raw::poll::<tracing::instrument::Instrumented<<zbus::object_server::ObjectServer>::dispatch_method_cal
+                                     <tracing::instrument::Instrumented<<zbus::object_server::ObjectServer>::dispatch_method_call_try::{closure#0}::{closure#5}>
+                                     |
+                                      --5.36%--<zbus::object_server::ObjectServer>::dispatch_call_to_iface::{closure#0}
+                                                <dbus_bench::Service as zbus::object_server::interface::Interface>::call::{closure#1}
+                                                <zbus::connection::Connection>::send::{closure#0}
+                                                <tokio::net::unix::split_owned::OwnedWriteHalf as zbus::connection::socket::WriteHalf>::send_message::{closure#0
+                                                <tokio::net::unix::split_owned::OwnedWriteHalf as zbus::connection::socket::WriteHalf>::sendmsg::{closure#0}
+                                                <tokio::runtime::io::registration::Registration>::try_io::<usize, <tokio::net::unix::stream::UnixStream>::try_io
+                                                zbus::connection::socket::unix::fd_sendmsg
+                                                nix::sys::socket::sendmsg::<nix::sys::socket::addr::UnixAddr>
+                                                __libc_sendmsg
+                                                entry_SYSCALL_64_after_hwframe
+                                                do_syscall_64
+                                                x64_sys_call
+                                                __x64_sys_sendmsg
+                                                __sys_sendmsg
+                                                ___sys_sendmsg
+                                                ____sys_sendmsg
+                                                unix_stream_sendmsg
+                                                sock_def_readable
+                                                __wake_up_sync_key
+                                                _raw_spin_unlock_irqrestore

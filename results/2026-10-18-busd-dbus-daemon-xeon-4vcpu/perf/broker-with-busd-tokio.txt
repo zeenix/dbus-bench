@@ -1,0 +1,37 @@
+# perf report --no-children -g none -n --sort dso,sym (perf record -F 1999 -g, one run)
+# Total Lost Samples: 0
+# Samples: 2K of event 'task-clock:ppp'
+# Overhead       Samples  Shared Object
+    65.30%          1771  [kernel.kallsyms]
+    29.13%           790  prof-busd-tokio
+
+    35.47%           962  [k] finish_task_switch.isra.0
+     5.75%           156  [k] _raw_spin_unlock_irqrestore
+     2.73%            74  [k] _copy_to_iter
+     1.88%            51  [k] _raw_spin_unlock_irq
+     1.33%            36  [k] do_syscall_64
+     1.22%            33  [.] _RINvXs_NtNtNtCseQSNU24fggK_4zbus4wire4dbus2deQINtB5_12DeserializerNtNtB9_2fd2FdENtNtCsdmL2MbJzaOK_10serde_core2de12Deserializer15
+     1.18%            32  [.] _RNCNvXs3_NtNtCseQSNU24fggK_4zbus7runtime2ioINtNtCs40k4W9msRzi_5alloc4sync3ArcINtB7_12RegisteredIoNtNtB7_4unix7UnixOpsEENtNtNtBb_1
+     1.11%            30  [.] _RNvMs5_NtNtNtCsgczF5crJ4sT_3std4sync6poison5mutexINtB5_5MutexINtNtCs710XH9Daqpc_8zruntime9broadcast5InnerINtNtCscI6d9CVNmLh_4core
+     1.03%            28  [.] <zbus::connection::socket_reader::SocketReader>::receive_msg::{closure#0}::{closure#0}
+     0.96%            26  [.] cfree@GLIBC_2.2.5
+     0.96%            26  [k] ep_poll
+     0.85%            23  [k] fdget
+     0.77%            21  [.] <tokio::runtime::io::driver::Driver>::turn
+     0.70%            19  [.] _RNvXs1_NtNtNtCscI6d9CVNmLh_4core3ops8function5implsQNCNCINvMNtNtCseQSNU24fggK_4zbus7runtime2ioINtBW_12RegisteredIoNtNtBW_4unix7Un
+     0.66%            18  [.] zbus_utils::signature::parse::parse_signature
+     0.66%            18  [k] _copy_from_iter
+     0.66%            18  [k] _raw_spin_lock
+     0.66%            18  [.] malloc
+     0.66%            18  [k] unix_poll
+     0.63%            17  [.] core::ptr::drop_glue::<std::sync::poison::mutex::MutexGuard<core::option::Option<std::thread::id::ThreadId>>>
+     0.63%            17  [.] _RINvNtNtNtCsdrLEDgX54TR_5tokio7runtime4task3raw4pollINtNtNtB6_8blocking4task12BlockingTaskNCNvMNtNtNtB6_9scheduler12multi_thread6
+     0.63%            17  [.] <zbus_utils::signature::Signature as core::clone::Clone>::clone.2531
+     0.59%            16  [.] <busd::peers::Peers>::serve_peer::{closure#0}
+     0.59%            16  [.] __memcmp_evex_movbe
+     0.55%            15  [.] tokio::runtime::task::waker::wake_by_val
+     0.55%            15  [k] __memcg_slab_free_hook
+     0.52%            14  [.] <zbus_utils::signature::Signature>::alignment_dbus.1822
+     0.52%            14  [.] <tokio::runtime::scheduler::multi_thread::worker::Context>::park_internal
+     0.52%            14  [k] mutex_lock
+     0.48%            13  [.] _RINvXs2_NtNtCseQSNU24fggK_4zbus7message10field_codeNtB6_9FieldCodeNtNtCsdmL2MbJzaOK_10serde_core2de11Deserialize11deserializeQINt

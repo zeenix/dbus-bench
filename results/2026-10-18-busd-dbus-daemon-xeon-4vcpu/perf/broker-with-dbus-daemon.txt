@@ -1,0 +1,37 @@
+# perf report --no-children -g none -n --sort dso,sym (perf record -F 1999 -g, one run)
+# Total Lost Samples: 0
+# Samples: 2K of event 'task-clock:ppp'
+# Overhead       Samples  Shared Object
+    41.24%           963  libdbus-1.so.3.32.4
+    39.61%           925  [kernel.kallsyms]
+
+     8.01%           187  [k] finish_task_switch.isra.0
+     4.07%            95  [k] _raw_spin_unlock_irqrestore
+     3.43%            80  [.] _dbus_type_reader_get_current_type
+     3.13%            73  [k] _copy_to_iter
+     2.96%            69  [.] _dbus_first_type_in_signature
+     2.48%            58  [.] pthread_mutex_lock@@GLIBC_2.2.5
+     2.23%            52  [k] shuffle_freelist
+     2.10%            49  [.] __libc_recvmsg
+     2.06%            48  [.] pthread_mutex_unlock@@GLIBC_2.2.5
+     1.76%            41  [k] do_syscall_64
+     1.71%            40  [.] _int_malloc
+     1.54%            36  [.] _dbus_type_reader_recurse
+     1.46%            34  [.] __memmove_avx512_unaligned_erms
+     1.33%            31  [.] _dbus_type_reader_next
+     1.20%            28  [k] _raw_spin_lock
+     1.07%            25  [k] _copy_from_iter
+     0.81%            19  [k] mutex_lock
+     0.77%            18  [.] _dbus_atomic_inc
+     0.77%            18  [k] _raw_spin_unlock_irq
+     0.73%            17  [k] __raw_callee_save___pv_queued_spin_unlock
+     0.69%            16  [k] check_heap_object
+     0.64%            15  [.] _dbus_atomic_dec
+     0.64%            15  [k] copy_iovec_from_user
+     0.64%            15  [k] handle_softirqs
+     0.56%            13  [k] __put_user_nocheck_4
+     0.56%            13  [.] clock_gettime@@GLIBC_2.17
+     0.56%            13  [.] epoll_wait
+     0.51%            12  [k] __memcg_slab_post_alloc_hook
+     0.51%            12  [.] _dbus_string_lengthen
+     0.47%            11  [.] dbus_timeout_get_enabled

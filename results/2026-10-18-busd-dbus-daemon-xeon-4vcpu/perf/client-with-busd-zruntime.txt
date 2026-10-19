@@ -1,0 +1,37 @@
+# perf report --no-children -g none -n --sort dso,sym (perf record -F 1999 -g, one run)
+# Total Lost Samples: 0
+# Samples: 3K of event 'task-clock:ppp'
+# Overhead       Samples  Shared Object
+    66.33%          2646  prof-dbus-bench
+    22.26%           888  [kernel.kallsyms]
+
+    20.03%           799  [.] <zvariant::signature_parser::SignatureParser>::next_signature
+    10.28%           410  [k] _raw_spin_unlock_irqrestore
+     3.69%           147  [.] <zvariant::signature_parser::SignatureParser>::parse_next_signature
+     3.26%           130  [.] <zvariant::signature::Signature>::slice::<core::ops::range::Range<usize>>
+     2.76%           110  [.] __memmove_avx512_unaligned_erms
+     2.01%            80  [.] malloc
+     1.45%            58  [k] _copy_to_iter
+     1.35%            54  [.] _int_free
+     1.28%            51  [.] <zvariant::signature_parser::SignatureParser>::next_char
+     1.18%            47  [.] <zvariant::signature_parser::SignatureParser>::skip_chars
+     1.18%            47  [.] cfree@GLIBC_2.2.5
+     1.00%            40  [.] <zvariant::signature_parser::SignatureParser>::validate
+     0.88%            35  [.] <zbus::message::Message>::header
+     0.73%            29  [.] core::str::converts::from_utf8
+     0.73%            29  [k] _copy_from_iter
+     0.70%            28  [.] <zvariant::signature::Signature>::as_str
+     0.70%            28  [.] <alloc::sync::Arc<[u8]>>::drop_slow
+     0.70%            28  [k] do_syscall_64
+     0.68%            27  [.] __libc_recvmsg
+     0.68%            27  [k] finish_task_switch.isra.0
+     0.65%            26  [.] zvariant::utils::alignment_for_signature
+     0.65%            26  [.] zbus_names::well_known_name::ensure_correct_well_known_name
+     0.65%            26  [.] _int_malloc
+     0.63%            25  [.] _RINvNtNtNtCsccndNsnhBsd_5tokio7runtime4task3raw4pollNCNvMNtNtCsbHSHYEXyHRM_4zbus10connection13socket_readerNtBT_12SocketReader11r
+     0.63%            25  [.] __rustc::__rust_alloc
+     0.55%            22  [.] __rustc::__rust_dealloc
+     0.55%            22  [.] __memset_avx512_unaligned_erms
+     0.55%            22  [.] realloc
+     0.53%            21  [.] _RINvXs_NtNtCsaaAjHEB17h5_8zvariant4dbus3serQINtB5_10SerializerNtNtB9_3ser13NullWriteSeekENtNtCsj4QnKv3c4Gm_5serde3ser10Serializer
+     0.50%            20  [.] __rustc::__rust_no_alloc_shim_is_unstable_v2

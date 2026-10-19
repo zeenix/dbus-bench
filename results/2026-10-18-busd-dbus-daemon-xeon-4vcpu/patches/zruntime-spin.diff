@@ -1,0 +1,80 @@
+--- a/src/poll/epoll.rs	2026-10-18 00:41:07.044087944 +0000
++++ b/src/poll/epoll.rs	2026-10-18 10:59:12.627350796 +0000
+@@ -19,7 +19,8 @@
+     io,
+     mem::MaybeUninit,
+     os::fd::{BorrowedFd, OwnedFd},
+-    time::Duration,
++    sync::OnceLock,
++    time::{Duration, Instant},
+ };
+ 
+ use rustix::{
+@@ -43,6 +44,8 @@
+     wake: Pipe,
+     /// The timer a wait with a timeout sets, which the instance watches under [`TIMER`].
+     timer: OwnedFd,
++    /// EXPERIMENT: set by a wait that drained a wake-up.
++    woken: std::sync::atomic::AtomicBool,
+ }
+ 
+ impl Poller {
+@@ -69,7 +72,12 @@
+         )?;
+         epoll::add(&epoll, &timer, EventData::new_u64(TIMER), EventFlags::IN)?;
+ 
+-        Ok(Self { epoll, wake, timer })
++        Ok(Self {
++            epoll,
++            wake,
++            timer,
++            woken: std::sync::atomic::AtomicBool::new(false),
++        })
+     }
+ 
+     /// Breaks a `wait` in progress or the next one; callable from any thread.
+@@ -155,6 +163,36 @@
+     /// Waits until a watched source is ready, `notify` is called or `timeout` passes; `None`
+     /// waits without limit.
+     pub(crate) fn wait(&self, timeout: Option<Duration>) -> io::Result<Vec<Ready>> {
++        // EXPERIMENT: poll without blocking for up to `ZRUNTIME_SPIN_US` microseconds before a
++        // wait that would block, so that the thread does not go to sleep, and need waking, when
++        // more work arrives within that time.
++        static SPIN: OnceLock<Duration> = OnceLock::new();
++        let spin = *SPIN.get_or_init(|| {
++            let us = std::env::var("ZRUNTIME_SPIN_US").ok().and_then(|v| v.parse().ok());
++            Duration::from_micros(us.unwrap_or(0))
++        });
++        if !spin.is_zero() && timeout != Some(Duration::ZERO) {
++            let spin = timeout.map_or(spin, |timeout| spin.min(timeout));
++            let start = Instant::now();
++            while start.elapsed() < spin {
++                let ready = self.wait_once(Some(Duration::ZERO))?;
++                if !ready.is_empty() || self.woken() {
++                    return Ok(ready);
++                }
++            }
++            let timeout = timeout.map(|timeout| timeout.saturating_sub(start.elapsed()));
++            return self.wait_once(timeout);
++        }
++
++        self.wait_once(timeout)
++    }
++
++    /// EXPERIMENT: whether the last `wait_once` drained a wake-up.
++    fn woken(&self) -> bool {
++        self.woken.swap(false, std::sync::atomic::Ordering::Relaxed)
++    }
++
++    fn wait_once(&self, timeout: Option<Duration>) -> io::Result<Vec<Ready>> {
+         // On the stack, so that a wait allocates nothing for it. A wait that finds more sources
+         // ready than it holds leaves the rest to the next, as `EVENTS` says.
+         let mut events = [MaybeUninit::<Event>::uninit(); EVENTS];
+@@ -185,6 +223,7 @@
+             let (flags, data) = (event.flags, event.data);
+             if data.u64() == WAKE {
+                 self.wake.drain();
++                self.woken.store(true, std::sync::atomic::Ordering::Relaxed);
+ 
+                 continue;
+             }
