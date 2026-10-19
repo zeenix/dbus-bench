@@ -37,12 +37,46 @@ first_line() {
     "$@" 2> /dev/null | sed -n 1p || true
 }
 
-# Exports the commit $2 of the repository $1 to the directory $3, unless it is there already.
-export_rev() {
-    if [ ! -d "$3" ]; then
-        mkdir -p "$3"
-        git -C "$1" archive "$2" | tar -x -C "$3"
+# What an export is made from: the commit $1, the command $2... that is run in it, the code of that
+# command where it is a function of this script, and what the files among its arguments hold.
+export_inputs() {
+    local arg
+    printf '%s\n' "$@"
+    if [ $# -gt 1 ] && declare -F "$2" > /dev/null; then
+        declare -f "$2"
     fi
+    for arg in "${@:2}"; do
+        if [ -f "$arg" ]; then
+            sha256sum < "$arg"
+        fi
+    done
+}
+
+# Exports the commit $2 of the repository $1 to the directory $3, and runs the command $4..., if
+# any, in it, unless the directory holds an export made from the same inputs already (see
+# export_inputs): one made from another commit, command or patch is made afresh, along with its
+# build. The export is made under another name, which becomes $3 once the command has run, so that
+# a run that stops halfway leaves no export behind that the next run would take for a finished one.
+export_rev() {
+    local repo=$1 rev=$2 dir=$3 inputs
+    shift 3
+    inputs=$(export_inputs "$rev" "$@")
+    if [ "$(cat "$dir/.export-inputs" 2> /dev/null)" = "$inputs" ]; then
+        return
+    fi
+    rm -rf "$dir" "$dir.new"
+    mkdir -p "$dir.new"
+    git -C "$repo" archive "$rev" | tar -x -C "$dir.new"
+    if [ $# -gt 0 ]; then
+        (cd "$dir.new" && "$@")
+    fi
+    printf '%s\n' "$inputs" > "$dir.new/.export-inputs"
+    mv "$dir.new" "$dir"
+}
+
+# Has the export of busd in the current directory build against the export of zruntime in $1.
+use_zruntime() {
+    printf '\n[patch.crates-io]\nzruntime = { path = "%s" }\n' "$1" >> Cargo.toml
 }
 
 have "$busd" https://github.com/z-galaxy/busd main $tokio_rev
@@ -53,15 +87,8 @@ have "$zruntime" https://github.com/z-galaxy/zruntime refs/tags/zruntime-0.2.0 $
 
 export_rev "$busd" $tokio_rev "$work/busd-tokio"
 export_rev "$busd" $port_rev "$work/busd-zruntime"
-if [ ! -d "$work/zruntime-spin" ]; then
-    export_rev "$zruntime" $zruntime_rev "$work/zruntime-spin"
-    (cd "$work/zruntime-spin" && git apply "$spin_patch")
-fi
-if [ ! -d "$work/busd-spin" ]; then
-    export_rev "$busd" $port_rev "$work/busd-spin"
-    printf '\n[patch.crates-io]\nzruntime = { path = "%s" }\n' "$work/zruntime-spin" \
-        >> "$work/busd-spin/Cargo.toml"
-fi
+export_rev "$zruntime" $zruntime_rev "$work/zruntime-spin" git apply "$spin_patch"
+export_rev "$busd" $port_rev "$work/busd-spin" use_zruntime "$work/zruntime-spin"
 
 (cd "$work/busd-tokio" && cargo build --release --locked)
 (cd "$work/busd-zruntime" && cargo build --release --locked)
