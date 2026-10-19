@@ -129,6 +129,11 @@ MODE=forward SECS=3 INTERVAL_US=1000 ./measure-light-traffic.py \
     "busypoll100=env ZRUNTIME_BUSY_POLL_US=100 busd-busypoll --address {address}"
 ```
 
+To run these tests on another machine, under load, on one CPU and under light load, along with
+the other comparisons of the busd builds, run
+[`scripts/compare-busd-builds.sh`](../scripts/compare-busd-builds.sh). It leaves out the limits
+above 50 µs and the intervals of 30 and 100 µs.
+
 ## Results
 
 Timings are medians, with the fastest and slowest run in parentheses. "Broker CPU" is the broker's
