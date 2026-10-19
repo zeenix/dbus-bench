@@ -11,6 +11,11 @@ and suggested spinning only while the bus is busy. zruntime's busy polling
 Before a wait that would put it to sleep, a runtime polls for up to a limit, but only if one of its
 last eight such waits lasted no longer than the limit.
 
+Measured on real hardware since, on a Ryzen 7 7840U, the busy polling gains much less and costs
+more: 4.5% with 20 clients, nothing with one, and CPU time, latency and energy under light
+traffic. See [zruntime's busy polling on a Ryzen 7
+7840U](2026-10-19-zruntime-busy-poll-ryzen-7840u.md).
+
 ## Summary
 
 * Under load, the busy polling does what the spin before every sleep does. With 20 clients, busd
