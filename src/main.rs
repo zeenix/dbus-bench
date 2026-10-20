@@ -1,4 +1,5 @@
-use serde_bytes::ByteBuf;
+use serde::{Deserialize, Serialize};
+use serde_bytes::Bytes;
 
 #[derive(Debug)]
 struct Service;
@@ -8,8 +9,17 @@ struct Service;
     proxy(default_path = "/org/dbus2/benchmark")
 )]
 impl Service {
-    fn take_byte_array(&self, _msg: ByteBuf) {}
+    fn take_byte_array(&self, _bytes: ByteArray<'_>) {}
 }
+
+/// The byte array of a call, borrowed from the message that carries it.
+///
+/// An argument of type `&T`, other than `&str`, is deserialized into a `T` that the method then
+/// borrows, which would copy the array out of the message. A type that holds the reference itself
+/// is deserialized as it is, and as a struct with a single field, it has the D-Bus type of that
+/// field: an array of bytes.
+#[derive(Deserialize, Serialize, zbus::wire::Type)]
+struct ByteArray<'a>(#[serde(borrow)] &'a Bytes);
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -36,7 +46,7 @@ async fn hammer(name: String) -> zbus::Result<()> {
     let proxy = ServiceProxy::new(&conn, name).await?;
     for _ in 0..1000 {
         let data = vec![0u8; 16 * 1024];
-        proxy.take_byte_array(ByteBuf::from(data)).await?;
+        proxy.take_byte_array(ByteArray(Bytes::new(&data))).await?;
     }
 
     Ok(())
