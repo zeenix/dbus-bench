@@ -1,0 +1,9 @@
+[package]
+name = "pinger"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+tokio = { version = "1.54.0", features = ["rt", "macros", "time"] }
+zbus = { version = "6.0.0", default-features = false, features = ["proxy", "service", "tokio"] }
