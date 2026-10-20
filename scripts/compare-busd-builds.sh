@@ -33,13 +33,10 @@
 # LIGHT_ROUNDS the number of rounds of each light-traffic test (default: 10) and LIGHT_SECS the
 # number of seconds that each run of a light-traffic test lasts (default: 3).
 #
-# With the default rounds, a run takes about 8 minutes on a Ryzen 7 7840U laptop, once the builds
-# are made: 2.5 minutes under load, half a minute on one CPU and 5 for the light-traffic tests.
-# That is an estimate, made from a run with one round of each on a 4-vCPU Xeon VM. There, a run of
-# the benchmark took 2.4 s, where it takes about 1.1 s on the laptop (see
-# results/2026-10-18-busd-zruntime-ryzen-7840u.md), and a run of a light-traffic test took its
-# LIGHT_SECS and 0.03 s more. The first run makes the builds too, which took about 5 minutes on
-# that VM.
+# With the default rounds, a run takes about 7.5 minutes on a Ryzen 7 7840U laptop, once the builds
+# are made: 1.5 minutes under load, 45 seconds on one CPU and 5 minutes for the light-traffic tests,
+# as the run of results/2026-10-20-zbus-6-ryzen-7840u.md did. The first run makes the builds too,
+# which took about 5 minutes on a 4-vCPU Xeon VM.
 #
 # The light-traffic tests record the energy that the CPU packages use while the client runs only
 # where they can read the counters, /sys/class/powercap/*/energy_uj, which most systems let only
@@ -67,8 +64,9 @@ busypoll_patch=$busypoll_results/patches/busd-busy-poll.diff
 light_client=$busypoll_results/light-client
 light_measure=$busypoll_results/measure-light-traffic.py
 
-# The commits measured: busd's main branch, on Tokio; the port of busd to zruntime; zruntime
-# 0.2.0, which the port runs on; and zruntime with the busy polling of z-galaxy/zruntime#52.
+# The commits measured: the last commit of busd's main branch on Tokio; the port of busd to
+# zruntime, which that branch has had since a982812, with the same code; zruntime 0.2.0, which the
+# port runs on; and zruntime with the busy polling of z-galaxy/zruntime#52.
 tokio_rev=840d728740fce72176c6151b433f6896c0a462d7
 port_rev=0d2286266648e9f1b3729e01b17408ee4a03bfd7
 zruntime_rev=cf3b321959f21428ae58e32e1a0bd1dd9edf4a9a
@@ -155,7 +153,8 @@ light_traffic() {
 }
 
 have "$busd" https://github.com/z-galaxy/busd main $tokio_rev
-# The port is on the branch of its pull request, and on busd's main branch once that is merged.
+# The port is on busd's main branch, which a982812 merged it into, and on the branch of its pull
+# request.
 have "$busd" https://github.com/z-galaxy/busd main $port_rev 2> /dev/null ||
     have "$busd" https://github.com/zeenix/busd ccr-71f9417f-wbfql4 $port_rev
 have "$zruntime" https://github.com/z-galaxy/zruntime refs/tags/zruntime-0.2.0 $zruntime_rev
