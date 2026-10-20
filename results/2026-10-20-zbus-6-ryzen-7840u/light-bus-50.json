@@ -1,0 +1,345 @@
+{
+ "config": {
+  "INTERVAL_US": "50",
+  "SECS": "3",
+  "MODE": "bus"
+ },
+ "brokers": {
+  "off": "/tmp/busd-bench/busd-busypoll/target/release/busd --address {address}",
+  "busypoll20": "env ZRUNTIME_BUSY_POLL_US=20 /tmp/busd-bench/busd-busypoll/target/release/busd --address {address}",
+  "spin20": "env ZRUNTIME_SPIN_US=20 /tmp/busd-bench/busd-spin/target/release/busd --address {address}"
+ },
+ "runs": [
+  {
+   "label": "off",
+   "round": 0,
+   "cpu_s": 1.0874009999999998,
+   "vcsw": 56746,
+   "energy_j": 70.903499,
+   "calls": 56743,
+   "median_us": 38.0,
+   "p99_us": 90.2,
+   "mean_us": 42.3
+  },
+  {
+   "label": "spin20",
+   "round": 0,
+   "cpu_s": 2.258347,
+   "vcsw": 52776,
+   "energy_j": 76.728317,
+   "calls": 57855,
+   "median_us": 36.8,
+   "p99_us": 79.5,
+   "mean_us": 39.8
+  },
+  {
+   "label": "busypoll20",
+   "round": 0,
+   "cpu_s": 1.224753,
+   "vcsw": 56442,
+   "energy_j": 68.724702,
+   "calls": 56453,
+   "median_us": 39.2,
+   "p99_us": 90.2,
+   "mean_us": 43.6
+  },
+  {
+   "label": "spin20",
+   "round": 1,
+   "cpu_s": 2.267093,
+   "vcsw": 54956,
+   "energy_j": 76.061496,
+   "calls": 58314,
+   "median_us": 38.0,
+   "p99_us": 72.4,
+   "mean_us": 40.0
+  },
+  {
+   "label": "off",
+   "round": 1,
+   "cpu_s": 1.089852,
+   "vcsw": 56573,
+   "energy_j": 76.14392,
+   "calls": 56562,
+   "median_us": 38.0,
+   "p99_us": 90.2,
+   "mean_us": 42.5
+  },
+  {
+   "label": "busypoll20",
+   "round": 1,
+   "cpu_s": 1.2264149999999998,
+   "vcsw": 56877,
+   "energy_j": 66.381714,
+   "calls": 56914,
+   "median_us": 39.2,
+   "p99_us": 89.0,
+   "mean_us": 42.8
+  },
+  {
+   "label": "off",
+   "round": 2,
+   "cpu_s": 1.081592,
+   "vcsw": 56689,
+   "energy_j": 72.199132,
+   "calls": 56679,
+   "median_us": 38.0,
+   "p99_us": 91.4,
+   "mean_us": 42.0
+  },
+  {
+   "label": "busypoll20",
+   "round": 2,
+   "cpu_s": 1.234696,
+   "vcsw": 56119,
+   "energy_j": 70.91595,
+   "calls": 56175,
+   "median_us": 40.4,
+   "p99_us": 92.6,
+   "mean_us": 44.1
+  },
+  {
+   "label": "spin20",
+   "round": 2,
+   "cpu_s": 2.259036,
+   "vcsw": 51968,
+   "energy_j": 67.776555,
+   "calls": 57794,
+   "median_us": 36.8,
+   "p99_us": 78.4,
+   "mean_us": 39.8
+  },
+  {
+   "label": "off",
+   "round": 3,
+   "cpu_s": 1.072238,
+   "vcsw": 56456,
+   "energy_j": 75.248062,
+   "calls": 56450,
+   "median_us": 38.0,
+   "p99_us": 91.4,
+   "mean_us": 42.3
+  },
+  {
+   "label": "spin20",
+   "round": 3,
+   "cpu_s": 2.2531429999999997,
+   "vcsw": 53109,
+   "energy_j": 75.280546,
+   "calls": 58383,
+   "median_us": 36.8,
+   "p99_us": 71.2,
+   "mean_us": 39.1
+  },
+  {
+   "label": "busypoll20",
+   "round": 3,
+   "cpu_s": 1.235126,
+   "vcsw": 56707,
+   "energy_j": 78.540662,
+   "calls": 56710,
+   "median_us": 40.4,
+   "p99_us": 89.0,
+   "mean_us": 44.1
+  },
+  {
+   "label": "spin20",
+   "round": 4,
+   "cpu_s": 2.277616,
+   "vcsw": 52911,
+   "energy_j": 78.767258,
+   "calls": 57813,
+   "median_us": 38.0,
+   "p99_us": 79.5,
+   "mean_us": 40.3
+  },
+  {
+   "label": "busypoll20",
+   "round": 4,
+   "cpu_s": 1.250576,
+   "vcsw": 57157,
+   "energy_j": 66.510278,
+   "calls": 57169,
+   "median_us": 40.4,
+   "p99_us": 85.5,
+   "mean_us": 43.6
+  },
+  {
+   "label": "off",
+   "round": 4,
+   "cpu_s": 1.091097,
+   "vcsw": 56154,
+   "energy_j": 67.220416,
+   "calls": 56143,
+   "median_us": 38.0,
+   "p99_us": 98.5,
+   "mean_us": 42.7
+  },
+  {
+   "label": "spin20",
+   "round": 5,
+   "cpu_s": 2.243393,
+   "vcsw": 52928,
+   "energy_j": 68.282617,
+   "calls": 58243,
+   "median_us": 36.8,
+   "p99_us": 73.6,
+   "mean_us": 39.2
+  },
+  {
+   "label": "off",
+   "round": 5,
+   "cpu_s": 1.082745,
+   "vcsw": 56613,
+   "energy_j": 74.785821,
+   "calls": 56607,
+   "median_us": 38.0,
+   "p99_us": 87.9,
+   "mean_us": 42.5
+  },
+  {
+   "label": "busypoll20",
+   "round": 5,
+   "cpu_s": 1.222764,
+   "vcsw": 56760,
+   "energy_j": 70.13001,
+   "calls": 56770,
+   "median_us": 40.4,
+   "p99_us": 89.0,
+   "mean_us": 43.6
+  },
+  {
+   "label": "spin20",
+   "round": 6,
+   "cpu_s": 2.245655,
+   "vcsw": 51834,
+   "energy_j": 66.38414,
+   "calls": 57910,
+   "median_us": 36.8,
+   "p99_us": 77.2,
+   "mean_us": 39.5
+  },
+  {
+   "label": "off",
+   "round": 6,
+   "cpu_s": 1.087361,
+   "vcsw": 56479,
+   "energy_j": 74.614001,
+   "calls": 56468,
+   "median_us": 39.2,
+   "p99_us": 92.6,
+   "mean_us": 42.7
+  },
+  {
+   "label": "busypoll20",
+   "round": 6,
+   "cpu_s": 1.211453,
+   "vcsw": 57359,
+   "energy_j": 72.360302,
+   "calls": 57353,
+   "median_us": 40.4,
+   "p99_us": 84.3,
+   "mean_us": 42.9
+  },
+  {
+   "label": "busypoll20",
+   "round": 7,
+   "cpu_s": 1.241933,
+   "vcsw": 56714,
+   "energy_j": 66.137953,
+   "calls": 56732,
+   "median_us": 39.2,
+   "p99_us": 90.2,
+   "mean_us": 43.2
+  },
+  {
+   "label": "off",
+   "round": 7,
+   "cpu_s": 1.101003,
+   "vcsw": 56778,
+   "energy_j": 75.186939,
+   "calls": 56773,
+   "median_us": 39.2,
+   "p99_us": 90.2,
+   "mean_us": 42.6
+  },
+  {
+   "label": "spin20",
+   "round": 7,
+   "cpu_s": 2.248986,
+   "vcsw": 52963,
+   "energy_j": 68.716616,
+   "calls": 57838,
+   "median_us": 36.8,
+   "p99_us": 78.4,
+   "mean_us": 39.7
+  },
+  {
+   "label": "spin20",
+   "round": 8,
+   "cpu_s": 2.255132,
+   "vcsw": 52892,
+   "energy_j": 71.746229,
+   "calls": 57904,
+   "median_us": 36.8,
+   "p99_us": 78.4,
+   "mean_us": 39.8
+  },
+  {
+   "label": "busypoll20",
+   "round": 8,
+   "cpu_s": 1.229828,
+   "vcsw": 57727,
+   "energy_j": 71.887319,
+   "calls": 57731,
+   "median_us": 40.4,
+   "p99_us": 80.7,
+   "mean_us": 42.5
+  },
+  {
+   "label": "off",
+   "round": 8,
+   "cpu_s": 1.0798649999999999,
+   "vcsw": 56352,
+   "energy_j": 67.489018,
+   "calls": 56343,
+   "median_us": 38.0,
+   "p99_us": 93.8,
+   "mean_us": 42.5
+  },
+  {
+   "label": "busypoll20",
+   "round": 9,
+   "cpu_s": 1.242753,
+   "vcsw": 56842,
+   "energy_j": 72.886505,
+   "calls": 56865,
+   "median_us": 40.4,
+   "p99_us": 85.5,
+   "mean_us": 43.7
+  },
+  {
+   "label": "spin20",
+   "round": 9,
+   "cpu_s": 2.274867,
+   "vcsw": 52876,
+   "energy_j": 71.535943,
+   "calls": 58100,
+   "median_us": 36.8,
+   "p99_us": 77.2,
+   "mean_us": 39.5
+  },
+  {
+   "label": "off",
+   "round": 9,
+   "cpu_s": 1.070271,
+   "vcsw": 57373,
+   "energy_j": 66.026401,
+   "calls": 57367,
+   "median_us": 38.0,
+   "p99_us": 85.5,
+   "mean_us": 41.4
+  }
+ ],
+ "failures": []
+}
