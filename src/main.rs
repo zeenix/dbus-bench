@@ -5,7 +5,7 @@ struct Service;
 
 #[zbus::interface(
     name = "org.dbus2.benchmark",
-    proxy(gen_blocking = false, default_path = "/org/dbus2/benchmark")
+    proxy(default_path = "/org/dbus2/benchmark")
 )]
 impl Service {
     fn take_byte_array(&self, _msg: ByteBuf) {}
@@ -27,9 +27,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn hammer(name: String) -> zbus::Result<()> {
-    let conn = zbus::connection::Builder::session()?
-        .serve_at("/org/dbus2/benchmark", Service)?
-        .name(name.clone())?
+    let conn = zbus::connection::Builder::session()
+        .serve_at("/org/dbus2/benchmark", Service)
+        .name(name.clone())
         .build()
         .await?;
 
