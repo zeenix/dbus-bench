@@ -202,7 +202,11 @@ brokers=(
     "ZRUNTIME_SPIN_US=20 $work/busd-spin/target/release/busd --address {address}"
     "${busypoll_brokers[@]}"
 )
-meta=(--meta "rustc=$(first_line rustc --version)" --meta "zruntime-busypoll=$busypoll_rev")
+# The client is what limits the timings of the fastest brokers, so the results name the commit of
+# this repository that it is built from, with -dirty after it where the checkout has changes that
+# are not committed.
+meta=(--meta "rustc=$(first_line rustc --version)" --meta "zruntime-busypoll=$busypoll_rev"
+    --meta "dbus-bench=$(first_line git -C "$bench" describe --always --dirty --abbrev=40)")
 # The comparison on one CPU has neither dbus-daemon nor dbus-broker in it, so it is told nothing
 # of their versions.
 one_cpu_meta=("${meta[@]}" --meta "taskset=-c 0")
