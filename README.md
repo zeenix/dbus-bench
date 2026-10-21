@@ -30,24 +30,27 @@ benchmark once against every broker:
 
 | Broker        |      Version      | 1 connection | 20 connections | CPU time with 20 connections |
 |---------------|-------------------|-------------:|---------------:|-----------------------------:|
-| [dbus-broker] | 37                |      0.082 s |        0.930 s |                       0.41 s |
-| [dbus-daemon] | 1.16.2            |      0.160 s |        1.185 s |                       1.14 s |
-| [busd]        | 0.5.0<sup>1</sup> |      0.092 s |        0.917 s |                       0.91 s |
-| [busd]        | 0.5.0<sup>2</sup> |      0.088 s |        0.926 s |                       0.42 s |
+| [dbus-broker] | 37                |      0.062 s |        0.451 s |                       0.31 s |
+| [dbus-daemon] | 1.16.2            |      0.142 s |        1.195 s |                       1.17 s |
+| [busd]        | 0.5.0<sup>1</sup> |      0.075 s |        0.468 s |                       0.80 s |
+| [busd]        | 0.5.0<sup>2</sup> |      0.070 s |        0.475 s |                       0.37 s |
 
-With 20 connections, the client keeps its own CPU busy with every broker but dbus-daemon, so their
-timings there say more about the client than about them, and the CPU time of the broker is what
-tells them apart. [The results](results/2026-10-18-busd-zruntime-ryzen-7840u.md) have more on
-these, and on how they were measured. The results this table had before, from 2024, were likely
-made with an unoptimised build of the benchmark, as `cargo run` makes, which would have held every
-broker to about the same timings.
+With 20 connections, the client keeps its own CPU busy, 95 to 97% of the time, with every broker but
+dbus-daemon, so their timings there are within 6% of each other, and the CPU time of the broker is
+what tells them apart. [The results](results/2026-10-20-zbus-6-ryzen-7840u.md) have more on these,
+and on how they were measured. The results this table had before, from 2026-10-18, were measured
+with the benchmark on zbus 4.3, whose client was so much slower that every broker but dbus-daemon
+took about 0.92 s with 20 connections, twice as long as now. Those it had before that, from 2024,
+were likely made with an unoptimised build of the benchmark, as `cargo run` makes, which would have
+held every broker to about the same timings.
 
 **Note**: If you run the benchmark on your machine, make sure that `busd` is built in release mode
 (`cargo run --release` if you build+run it yourself from the source).
 
-1: Actually, git main branch (commit 840d728), on Tokio.
+1: Actually, the last commit of the git main branch on Tokio (840d728).
 
-2: Actually, the port of busd to zruntime (commit 0d22862).
+2: Actually, the git main branch (commit a982812), on zruntime. It was measured from the commit that
+ported busd to zruntime (0d22862), which builds the same code.
 
 [dbus-broker]: https://github.com/bus1/dbus-broker
 [dbus-daemon]: https://gitlab.freedesktop.org/dbus/dbus
