@@ -1,0 +1,52 @@
+diff --git a/src/main.rs b/src/main.rs
+index 30ac8eb..98c953c 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -22,6 +22,7 @@ trait Service {
+ async fn main() -> Result<(), Box<dyn std::error::Error>> {
+     let data = ByteBuf::from(vec![0u8; 16 * 1024]);
+ 
++    if std::env::var_os("DBUS_BENCH_SHARED_ONLY").is_none() {
+     let before = std::time::Instant::now();
+     hammer(&data, None).await?;
+     let elapsed = before.elapsed();
+@@ -31,9 +32,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
+     hammer_multi(&data, None).await?;
+     let elapsed = before.elapsed();
+     println!(
+-        "Hammering using 100 simultaneous clients took {:?}",
++        "Hammering using {} simultaneous clients took {:?}",
++        clients(),
+         elapsed
+     );
++    }
+     let conn = zbus::connection::Builder::session()?
+         .serve_at("/org/dbus2/benchmark", Service)?
+         .build()
+@@ -42,7 +45,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
+     hammer_multi(&data, Some(&conn)).await?;
+     let elapsed = before.elapsed();
+     println!(
+-        "Hammering using 100 simultaneous clients while sharing the same connection took {:?}",
++        "Hammering using {} simultaneous clients while sharing the same connection took {:?}",
++        clients(),
+         elapsed
+     );
+ 
+@@ -70,7 +74,15 @@ async fn hammer(data: &ByteBuf, conn: Option<&Connection>) -> zbus::Result<()> {
+ }
+ 
+ async fn hammer_multi(data: &ByteBuf, conn: Option<&Connection>) -> zbus::Result<()> {
+-    futures_util::future::try_join_all((0..100).map(|_| hammer(data, conn)))
++    futures_util::future::try_join_all((0..clients()).map(|_| hammer(data, conn)))
+         .await
+         .map(|_| ())
+ }
++
++/// The number of clients of the multi-client phases: `$DBUS_BENCH_CLIENTS`, 100 by default.
++fn clients() -> usize {
++    std::env::var("DBUS_BENCH_CLIENTS")
++        .ok()
++        .and_then(|n| n.parse().ok())
++        .unwrap_or(100)
++}
