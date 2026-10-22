@@ -5,7 +5,8 @@
 # * baseline: busd's main branch, with a queue for each client (z-galaxy/busd#376);
 # * revert: that queue reverted, so that a send to a client waits for as long as it takes;
 # * timeout: the revert, then a time limit of 1 s on each send, past which the bus disconnects the
-#   client;
+#   client, or whichever later commit of that branch TIMEOUT_REV names, such as 7f3ba5a, with a
+#   limit of 100 ms and the sends of each message to all of its recipients at once;
 # * read-ahead: timeout with read-ahead.diff, which has busd read more messages ahead from each
 #   client.
 #
@@ -81,7 +82,7 @@ pinger=$bench/results/2026-10-20-busd-stalled-reader-xeon-4vcpu/pinger
 # some-changes branch of zeenix/dbus-bench that has the client on zbus 4.3.
 baseline_rev=0c52e9c60bddc518480ff68da18f3c2ec8cc3f3c
 revert_rev=41407f0d123260d68d8dbb8b4e48aed2ee2932c7
-timeout_rev=e93cec585f1543d5a256b9a1a32d089ac2a84967
+timeout_rev=${TIMEOUT_REV:-e93cec585f1543d5a256b9a1a32d089ac2a84967}
 zbus43_rev=7b5f2351d1c8dab30f4b1e1f9b70b9f3bad8208c
 
 # Makes sure that the repository $1 has the commit $4, by fetching $3 from $2 if it lacks it.
