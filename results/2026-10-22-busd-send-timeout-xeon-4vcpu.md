@@ -308,41 +308,28 @@ calls.
 
 ## Reproducing
 
-The binaries go into one directory, `$BIN`. busd, in a clone of z-galaxy/busd with the branch of
-zeenix/busd fetched (e93cec5 has the code of 8d57e20, which the branch no longer holds):
+Run [scripts/compare-send-timeout.sh](../scripts/compare-send-timeout.sh). It fetches the commits it
+lacks, makes the four builds of busd and the clients, runs
+[run-benchmarks.sh](2026-10-22-busd-send-timeout-xeon-4vcpu/run-benchmarks.sh) and
+[run-stalls.sh](2026-10-22-busd-send-timeout-xeon-4vcpu/run-stalls.sh), and packs what they write
+into `send-timeout-results.tar.gz` in `$WORK` (by default, `/tmp/send-timeout-bench`). The header of
+the script says where it expects the checkout of busd, and which variables shorten a run.
+
+It needs rustup and cargo. dbus-broker is optional, with the `systemd-socket-activate` that it runs
+under: the runs against it are left out where either is missing. The test with [frozen
+subscribers](#frozen-subscribers-of-the-buss-signals) needs gdbus and dbus-send, and is left out
+without them. Only a machine without systemd, as the VM was, needs the stand-in for journald that
+dbus-broker logs to, which binds `/run/systemd/journal/socket`. Start it first, from the root of
+dbus-bench:
 
 ```sh
-for b in baseline-0c52e9c revert-41407f0 timeout-e93cec5; do
-    git checkout ${b#*-} && cargo build --release --locked && cp target/release/busd $BIN/busd-$b
-done
-mv $BIN/busd-timeout-e93cec5 $BIN/busd-timeout-8d57e20
-git apply $RESULTS/read-ahead.diff && cargo build --release --locked &&
-    cp target/release/busd $BIN/busd-read-ahead
+python3 results/2026-10-22-busd-send-timeout-xeon-4vcpu/stalls/fake-journald.py /tmp/journal.log &
+JOURNAL=/tmp/journal.log scripts/compare-send-timeout.sh
 ```
 
-where `$RESULTS` is the directory next to this file. The clients, in dbus-bench: those of this
-commit, the zbus 4.3 client of the `some-changes` branch (7b5f235), with
-[zbus43-clients.diff](2026-10-22-busd-send-timeout-xeon-4vcpu/stalls/zbus43-clients.diff), which
-lets it run the shared-connection phase alone, and the pinger of
-[the earlier look into stalls](2026-10-20-busd-stalled-reader-xeon-4vcpu.md):
+On the VM, the benchmarks took about 28 minutes, the comparison with more read-ahead about 12 and
+the runs with clients that stop reading about 14: a run takes about 55 minutes, plus about 6 for the
+builds of the first one.
 
-```sh
-cargo build --release --locked && cp target/release/{dbus-bench,fanout,latency,shared} $BIN/
-git checkout 7b5f235 && git apply $RESULTS/stalls/zbus43-clients.diff &&
-    cargo build --release --locked && cp target/release/dbus-bench $BIN/dbus-bench-zbus43
-git checkout -f - && (cd results/2026-10-20-busd-stalled-reader-xeon-4vcpu/pinger &&
-    cargo build --release --locked)
-```
-
-Then, from the root of dbus-bench:
-
-```sh
-BIN=... OUT=... $RESULTS/run-benchmarks.sh
-# dbus-broker-launch logs to journald: with no systemd, as on the VM, this stands in for it.
-python3 $RESULTS/stalls/fake-journald.py /tmp/journal.log &
-BIN=... OUT=... PINGER=.../pinger/target/release/pinger JOURNAL=/tmp/journal.log \
-    $RESULTS/run-stalls.sh
-```
-
-The runs above were made with these scripts, other than for the names of their paths, which were
-those of the VM. The busd of timeout-rq256 was named `busd-timeout-mq` in the benchmark's results.
+The binaries of the VM were named differently: the timeout build was `busd-timeout-8d57e20`, with
+the same code as e93cec5, and the read-ahead build was `busd-timeout-mq`.
