@@ -23,6 +23,9 @@ below, and not a proposal.
 
 [read-ahead.diff]: 2026-10-22-busd-send-timeout-xeon-4vcpu/read-ahead.diff
 
+[A later run](2026-10-22-busd-concurrent-sends-xeon-4vcpu.md) measures the branch with a time limit
+of 100 ms and the sends of a message to all of its recipients at once.
+
 ## Summary
 
 The time limit keeps a client that stops reading from freezing the bus, which is what the queue of
