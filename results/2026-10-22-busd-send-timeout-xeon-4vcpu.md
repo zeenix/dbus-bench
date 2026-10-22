@@ -315,8 +315,9 @@ Run [scripts/compare-send-timeout.sh](../scripts/compare-send-timeout.sh). It fe
 lacks, makes the four builds of busd and the clients, runs
 [run-benchmarks.sh](2026-10-22-busd-send-timeout-xeon-4vcpu/run-benchmarks.sh) and
 [run-stalls.sh](2026-10-22-busd-send-timeout-xeon-4vcpu/run-stalls.sh), and packs what they write
-into `send-timeout-results.tar.gz` in `$WORK` (by default, `/tmp/send-timeout-bench`). The header of
-the script says where it expects the checkout of busd, and which variables shorten a run.
+into `send-timeout-results-COMMIT.tar.gz` in `$WORK` (by default, `/tmp/send-timeout-bench`), COMMIT
+being the short hash of the timeout commit, which `$TIMEOUT_REV` can change. The header of the
+script says where it expects the checkout of busd, and which variables shorten a run.
 
 It needs rustup and cargo. dbus-broker is optional, with the `systemd-socket-activate` that it runs
 under: the runs against it are left out where either is missing. The test with [frozen

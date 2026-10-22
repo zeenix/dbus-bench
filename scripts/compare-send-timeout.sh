@@ -28,9 +28,11 @@
 # the commit of the client on zbus 4.3 from the some-changes branch of zeenix/dbus-bench. Each
 # build of busd, and the client on zbus 4.3, is made from an export of its commit, under $WORK
 # (default: /tmp/send-timeout-bench), and is reused by the next run. The clients of this repository
-# are built in its checkout. Each run empties $WORK/send-timeout-results and has the scripts write
-# their results there, along with environment.txt, which notes the versions that their logs do not
-# name. The archive is $WORK/send-timeout-results.tar.gz.
+# are built in its checkout. The results go to $WORK/send-timeout-results-COMMIT, where COMMIT is
+# the short hash of the timeout commit, so that a run of each of those commits keeps its own: each
+# run empties it, and has the scripts write their results there, along with environment.txt, which
+# notes the versions that their logs do not name. The archive is
+# $WORK/send-timeout-results-COMMIT.tar.gz.
 #
 # Usage: scripts/compare-send-timeout.sh
 #
@@ -136,6 +138,8 @@ export_rev() {
 have "$busd" https://github.com/z-galaxy/busd main "$baseline_rev"
 have "$busd" https://github.com/zeenix/busd ccr-314882eb-9cvuxt "$revert_rev"
 have "$busd" https://github.com/zeenix/busd ccr-314882eb-9cvuxt "$timeout_rev"
+# TIMEOUT_REV may be a short hash: the results name the full one.
+timeout_rev=$(git -C "$busd" rev-parse --verify "$timeout_rev^{commit}")
 have "$bench" https://github.com/zeenix/dbus-bench some-changes "$zbus43_rev"
 
 export_rev "$busd" "$baseline_rev" "$work/busd-baseline"
@@ -169,9 +173,10 @@ for client in dbus-bench fanout latency shared; do
 done
 cp "$work/dbus-bench-zbus43/target/release/dbus-bench" "$bin/dbus-bench-zbus43"
 
-# What an earlier run left in the results would end up in the archive, so each run starts afresh.
-out=$work/send-timeout-results
-archive=$work/send-timeout-results.tar.gz
+# What an earlier run of the same commits left in the results would end up in the archive, so each
+# run starts afresh.
+out=$work/send-timeout-results-${timeout_rev:0:7}
+archive=$out.tar.gz
 rm -rf "$out"
 mkdir -p "$out"
 # The versions that the logs of run-stalls.sh do not name.
