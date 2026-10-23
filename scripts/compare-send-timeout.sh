@@ -41,13 +41,15 @@
 # * timeout-before: timeout on the commit of zruntime before it, its first parent.
 #
 # It runs only the paired comparisons of run-benchmarks.sh, without the read-ahead build, between
-# those three: timeout against timeout-before says what the commit of zruntime changes, and
-# baseline against timeout and timeout-before what the time limit costs with and without it.
-# baseline uses no time limit of zruntime's, so one build of it does for both. That needs a
-# checkout of zruntime too, at $CHECKOUT/z-galaxy/zruntime, which the commit is fetched into from
-# the ccr-314882eb-9cvuxt branch of zeenix/zruntime if it lacks it. The exports of zruntime are
-# under $WORK as well, and the results go to $WORK/send-timeout-results-COMMIT-zruntime-ZCOMMIT,
-# where ZCOMMIT is the short hash of the commit of zruntime.
+# those three and, as far as they are installed, dbus-broker and dbus-daemon: timeout against
+# timeout-before says what the commit of zruntime changes, baseline against timeout and
+# timeout-before what the time limit costs with and without it, and dbus-broker and dbus-daemon
+# against baseline and timeout where busd stands next to them. baseline uses no time limit of
+# zruntime's, so one build of it does for both. That needs a checkout of zruntime too, at
+# $CHECKOUT/z-galaxy/zruntime, which the commit is fetched into from the ccr-314882eb-9cvuxt branch
+# of zeenix/zruntime if it lacks it. The exports of zruntime are under $WORK as well, and the
+# results go to $WORK/send-timeout-results-COMMIT-zruntime-ZCOMMIT, where ZCOMMIT is the short hash
+# of the commit of zruntime.
 #
 # Usage: scripts/compare-send-timeout.sh
 #
@@ -63,12 +65,13 @@
 # frozen subscribers, with one of them and with two or three, and SHARED_REPEATS (default: 3) is
 # how many times each run of the shared connection with 100 proxies or fewer repeats.
 #
-# dbus-broker, which needs dbus-broker-launch and systemd-socket-activate, and the test with frozen
-# subscribers, which needs gdbus and dbus-send, are left out where those are missing. Where there is
-# no systemd, dbus-broker-launch fails unless stalls/fake-journald.py of those results runs, to
-# stand in for journald: start it, and name the file it writes to in JOURNAL, so that the logs have
-# dbus-broker's lines about the clients that it disconnects. With systemd, those lines go to the
-# real journal instead, and the logs have none.
+# dbus-broker, which needs dbus-broker-launch and systemd-socket-activate, dbus-daemon, which only a
+# run with ZRUNTIME_REV measures, and the test with frozen subscribers, which needs gdbus and
+# dbus-send, are left out where those are missing. Where there is no systemd, dbus-broker-launch
+# fails unless stalls/fake-journald.py of those results runs, to stand in for journald: start it,
+# and name the file it writes to in JOURNAL, so that the logs have dbus-broker's lines about the
+# clients that it disconnects. With systemd, those lines go to the real journal instead, and the
+# logs have none.
 #
 # With the default rounds, a run takes about 55 minutes on a 4-vCPU Xeon VM, once the builds are
 # made: 28 minutes for the first four comparisons of run-benchmarks.sh, 12 for its last one, with
@@ -76,7 +79,8 @@
 # which took about 6 minutes there. To check that everything works first, a short run takes about
 # 11 minutes there, once the builds are made: ROUNDS=2 SHARED_ROUNDS=2 READ_AHEAD_ROUNDS=2 WARMUP=1
 # FROZEN_CALLS_K1=30 FROZEN_CALLS_K3=30 SHARED_REPEATS=1 scripts/compare-send-timeout.sh
-# A run with ZRUNTIME_REV takes about 28 minutes there, as the first four comparisons do.
+# A run with ZRUNTIME_REV takes about 45 minutes there, judging by a short one, or 28 without
+# dbus-broker and dbus-daemon, as the first four comparisons do.
 set -euo pipefail
 
 if [ $# -gt 0 ]; then
@@ -172,7 +176,7 @@ use_zruntime() {
 # function runs with errexit off, so each step returns on a failure itself.
 compare_zruntime() {
     local rounds=${ROUNDS:-60} shared_rounds=${SHARED_ROUNDS:-40} warmup=${WARMUP:-3}
-    local brokers meta workload pair base cand name
+    local brokers meta pairs launch workload pair base cand name
     brokers=(
         --broker baseline "$bin/busd-zr-baseline --address {address}"
         --broker timeout "$bin/busd-zr-timeout --address {address}"
@@ -181,6 +185,29 @@ compare_zruntime() {
     meta=(--meta "rustc=$(first_line rustc --version)" --meta "baseline=$baseline_rev"
         --meta "timeout=$timeout_rev" --meta "zruntime=$zruntime_rev"
         --meta "zruntime-before=$zruntime_before_rev")
+    pairs=(timeout-before:timeout baseline:timeout baseline:timeout-before)
+    # The other brokers, as far as they are installed, each compared with both builds of busd on
+    # the commit of zruntime. dbus-broker runs only under its launcher, which takes its socket from
+    # systemd's socket activation and connects to the bus that $DBUS_SESSION_BUS_ADDRESS names, the
+    # one it launches here rather than the desktop's: see scripts/compare-brokers.py.
+    if command -v dbus-broker-launch > /dev/null &&
+        command -v systemd-socket-activate > /dev/null; then
+        launch="dbus-broker-launch --scope user"
+        brokers+=(--broker dbus-broker
+            "systemd-socket-activate -E DBUS_SESSION_BUS_ADDRESS={address} -l {path} $launch")
+        meta+=(--meta "dbus-broker=$(first_line dbus-broker --version)")
+        pairs+=(dbus-broker:baseline dbus-broker:timeout)
+    else
+        echo "dbus-broker-launch or systemd-socket-activate is not installed: leaving dbus-broker" \
+            "out of the comparisons." >&2
+    fi
+    if command -v dbus-daemon > /dev/null; then
+        brokers+=(--broker dbus-daemon "dbus-daemon --session --nofork --address={address}")
+        meta+=(--meta "dbus-daemon=$(first_line dbus-daemon --version)")
+        pairs+=(dbus-daemon:baseline dbus-daemon:timeout)
+    else
+        echo "dbus-daemon is not installed: leaving it out of the comparisons." >&2
+    fi
 
     echo "== method calls (the benchmark, on zbus 6): $rounds rounds" >&2
     python3 scripts/compare-brokers.py --bench "$bin/dbus-bench" --rounds "$rounds" \
@@ -201,7 +228,7 @@ compare_zruntime() {
         "${meta[@]}" "${brokers[@]}" > "$out/shared.md" || return
 
     for workload in calls signals latency shared; do
-        for pair in timeout-before:timeout baseline:timeout baseline:timeout-before; do
+        for pair in "${pairs[@]}"; do
             base=${pair%:*} cand=${pair#*:}
             name=$workload-$cand
             [ "$base" = baseline ] || name=$workload-$cand-vs-$base
