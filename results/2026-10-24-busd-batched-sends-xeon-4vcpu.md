@@ -35,7 +35,9 @@ release that its lock file names.
 * On the signals, batched is faster: 11.4% on the broadcast to 20 subscribers (from 9.2 to 13.6%),
   and 7.1% on the burst to one (from 3.7 to 10.4%, inconclusive), with 23.8% less CPU time of the
   broker, and 36.7% less system time. It writes the signals to a subscriber mostly 14 at a time,
-  with two system calls, where baseline makes one for each.
+  with two system calls, where baseline makes one for each. In the latencies, the fan-out of 2000
+  signals to 20 subscribers takes 15.6% less time all told, while each signal takes as long to
+  arrive.
 * Against the queue, batched is level or better, apart from the connection that 100 proxies share,
   which takes 8.4% longer (from +5.0 to +12.0%, inconclusive), as with baseline (+6.7%). A burst of
   signals to one subscriber is 25.9% faster, a broadcast to 20 12.7% faster, the delivery of
@@ -63,7 +65,8 @@ of each, and 40 of the shared connection, after 3 of warm-up, all five brokers i
 raw results of each run are in the `.json` files of
 [the directory](2026-10-24-busd-batched-sends-xeon-4vcpu), and the comparisons, with the other
 metrics and the medians, in its [stats](2026-10-24-busd-batched-sends-xeon-4vcpu/stats). A star
-marks a difference whose 95% interval excludes 0 but not the margin.
+marks a difference whose 95% interval excludes 0 but not the margin. The whole fan-out is how long
+the delivery of all the signals to 20 subscribers takes.
 
 ### batched against baseline
 
@@ -79,6 +82,7 @@ marks a difference whose 95% interval excludes 0 but not the margin.
 | RTT, 20 connections, p99 | 60 | 1593 µs | 1591 µs | -0.2% | -5.7, +5.6 | within ±5% |
 | delivery to 20, p50 | 60 | 27.5 ms | 27.6 ms | +0.5% | -4.6, +5.7 | within ±5% |
 | delivery to 20, p99 | 60 | 41.6 ms | 40.0 ms | -4.0% | -11.3, +3.7 | inconclusive |
+| delivery to 20, whole fan-out | 60 | 0.313 s | 0.264 s | -15.6% | -19.2, -11.8 | **better** |
 | 100 proxies, 1 connection | 40 | 3.89 s | 3.95 s | +1.5% | -1.4, +4.6 | within ±5% |
 | 100 connections | 40 | 4.78 s | 4.67 s | -2.3% | -5.8, +1.1 | inconclusive |
 | calls, broker CPU | 60 | 0.66 s | 0.67 s | +1.1% | -1.8, +4.0 | within ±5% |
@@ -113,6 +117,7 @@ the next one.
 | RTT, 20 connections, p99 | 60 | 1582 µs | 1591 µs | +0.5% | -5.0, +6.4 | inconclusive |
 | delivery to 20, p50 | 60 | 72.6 ms | 27.6 ms | -61.9% | -63.7, -60.2 | **better** |
 | delivery to 20, p99 | 60 | 122.5 ms | 40.0 ms | -67.4% | -69.6, -65.1 | **better** |
+| delivery to 20, whole fan-out | 60 | 0.322 s | 0.264 s | -18.0% | -20.9, -14.9 | **better** |
 | 100 proxies, 1 connection | 40 | 3.64 s | 3.95 s | +8.4% | +5.0, +12.0 | inconclusive* |
 | 100 connections | 40 | 4.91 s | 4.67 s | -4.8% | -8.4, -1.3 | inconclusive* |
 | calls, broker CPU | 60 | 0.67 s | 0.67 s | +0.5% | -2.4, +3.6 | within ±5% |
@@ -141,6 +146,7 @@ inconclusive), and less ahead of it on the burst of signals, -20.2%.
 | RTT, 20 connections, p99 | 60 | 2697 µs | 1591 µs | -41.0% | -43.9, -37.9 | **better** |
 | delivery to 20, p50 | 60 | 74.2 ms | 27.6 ms | -62.8% | -64.2, -61.2 | **better** |
 | delivery to 20, p99 | 60 | 133.6 ms | 40.0 ms | -70.1% | -72.0, -68.1 | **better** |
+| delivery to 20, whole fan-out | 60 | 0.359 s | 0.264 s | -26.3% | -28.7, -23.6 | **better** |
 | 100 proxies, 1 connection | 40 | 3.88 s | 3.95 s | +1.8% | -1.1, +4.7 | within ±5% |
 | 100 connections | 40 | 7.19 s | 4.67 s | -35.0% | -37.2, -32.8 | **better** |
 | calls, broker CPU | 60 | 0.60 s | 0.67 s | +11.5% | +8.9, +14.2 | **worse** |
@@ -169,6 +175,7 @@ baseline is where batched is against dbus-broker, but on the signals: 7.1% faste
 | RTT, 20 connections, p99 | 60 | 2099 µs | 1591 µs | -24.2% | -27.7, -20.6 | **better** |
 | delivery to 20, p50 | 60 | 60.8 ms | 27.6 ms | -54.6% | -56.9, -52.2 | **better** |
 | delivery to 20, p99 | 60 | 192.6 ms | 40.0 ms | -79.3% | -80.4, -78.0 | **better** |
+| delivery to 20, whole fan-out | 60 | 0.394 s | 0.264 s | -32.8% | -35.1, -30.4 | **better** |
 | 100 proxies, 1 connection | 40 | 4.50 s | 3.95 s | -12.2% | -14.4, -10.0 | **better** |
 | 100 connections | 40 | 5.78 s | 4.67 s | -19.2% | -21.8, -16.5 | **better** |
 | calls, broker CPU | 60 | 0.98 s | 0.67 s | -31.8% | -33.5, -30.0 | **better** |
