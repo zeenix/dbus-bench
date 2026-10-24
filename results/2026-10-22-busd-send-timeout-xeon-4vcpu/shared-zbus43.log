@@ -1,0 +1,118 @@
+baseline whole client run=1: after 15 s the client still runs; unix sockets (Recv-Q Send-Q):
+          1 72 228352 users:(("busd-baseline-0",pid=31684,fd=10))
+          1 215628 768 users:(("dbus-bench-zbus",pid=31691,fd=9))
+          1 0 0 users:(("dbus-bench-zbus",pid=31691,fd=8),("dbus-bench-zbus",pid=31691,fd=6))
+          1 0 0 users:(("dbus-bench-zbus",pid=31691,fd=7))
+          1 0 0 users:(("busd-baseline-0",pid=31684,fd=9))
+          1 0 0 users:(("busd-baseline-0",pid=31684,fd=8))
+baseline whole client run=1 exit=0 wall=20372ms disconnects=0
+    Hammering using a single client took 221.806888ms
+    Hammering using 100 simultaneous clients took 8.817068316s
+    Hammering using 100 simultaneous clients while sharing the same connection took 11.323228271s
+timeout whole client run=1: after 15 s the client still runs; unix sockets (Recv-Q Send-Q):
+          1 49860 222976 users:(("dbus-bench-zbus",pid=31958,fd=9))
+          1 215124 53760 users:(("busd-timeout-8d",pid=31951,fd=10))
+          1 0 0 users:(("dbus-bench-zbus",pid=31958,fd=8),("dbus-bench-zbus",pid=31958,fd=6))
+          1 0 0 users:(("dbus-bench-zbus",pid=31958,fd=7))
+          1 0 0 users:(("busd-timeout-8d",pid=31951,fd=9))
+          1 0 0 users:(("busd-timeout-8d",pid=31951,fd=8))
+timeout whole client run=1 exit=1 wall=27838ms disconnects=1
+    Hammering using a single client took 204.716032ms
+    Hammering using 100 simultaneous clients took 9.174931103s
+    Error: InputOutput(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" })
+revert whole client run=1: after 15 s the client still runs; unix sockets (Recv-Q Send-Q):
+          1 215124 155904 users:(("busd-revert-414",pid=32225,fd=10))
+          1 149076 222976 users:(("dbus-bench-zbus",pid=32232,fd=9))
+          1 0 0 users:(("dbus-bench-zbus",pid=32232,fd=8),("dbus-bench-zbus",pid=32232,fd=6))
+          1 0 0 users:(("dbus-bench-zbus",pid=32232,fd=7))
+          1 0 0 users:(("busd-revert-414",pid=32225,fd=9))
+          1 0 0 users:(("busd-revert-414",pid=32225,fd=8))
+revert whole client run=1 exit=124 wall=60006ms disconnects=0
+    Hammering using a single client took 208.225901ms
+    Hammering using 100 simultaneous clients took 9.010309606s
+dbus-broker whole client run=1: after 15 s the client still runs; unix sockets (Recv-Q Send-Q):
+          1 83052 0 users:(("dbus-bench-zbus",pid=32545,fd=9))
+          1 0 91136 users:(("dbus-broker",pid=32548,fd=8))
+          1 0 0 users:(("dbus-broker-lau",pid=32539,fd=9))
+          1 0 0 users:(("dbus-broker-lau",pid=32539,fd=8))
+          1 0 0 users:(("dbus-broker",pid=32548,fd=9))
+          1 0 0 users:(("dbus-broker",pid=32548,fd=4),("dbus-broker-lau",pid=32539,fd=4))
+dbus-broker whole client run=1 exit=0 wall=24861ms disconnects=0
+    Hammering using a single client took 218.507742ms
+    Hammering using 100 simultaneous clients took 13.670077188s
+    Hammering using 100 simultaneous clients while sharing the same connection took 10.964347242s
+timeout n=100 run=1 exit=1 wall=15457ms disconnects=1
+    Error: InputOutput(Os { code: 104, kind: ConnectionReset, message: "Connection reset by peer" })
+timeout n=100 run=2 exit=1 wall=2053ms disconnects=1
+    Error: InputOutput(Os { code: 104, kind: ConnectionReset, message: "Connection reset by peer" })
+timeout n=100 run=3: after 15 s the client still runs; unix sockets (Recv-Q Send-Q):
+          1 214916 120064 users:(("busd-timeout-8d",pid=566,fd=10))
+          1 115724 222976 users:(("dbus-bench-zbus",pid=573,fd=9))
+          1 0 0 users:(("dbus-bench-zbus",pid=573,fd=8),("dbus-bench-zbus",pid=573,fd=6))
+          1 0 0 users:(("dbus-bench-zbus",pid=573,fd=7))
+          1 0 0 users:(("busd-timeout-8d",pid=566,fd=9))
+          1 0 0 users:(("busd-timeout-8d",pid=566,fd=8))
+timeout n=100 run=3 exit=1 wall=20501ms disconnects=1
+    Error: InputOutput(Os { code: 104, kind: ConnectionReset, message: "Connection reset by peer" })
+timeout n=96 run=1: after 15 s the client still runs; unix sockets (Recv-Q Send-Q):
+          1 49764 222976 users:(("dbus-bench-zbus",pid=781,fd=9))
+          1 214916 53760 users:(("busd-timeout-8d",pid=774,fd=10))
+          1 0 0 users:(("dbus-bench-zbus",pid=781,fd=8),("dbus-bench-zbus",pid=781,fd=6))
+          1 0 0 users:(("dbus-bench-zbus",pid=781,fd=7))
+          1 0 0 users:(("busd-timeout-8d",pid=774,fd=9))
+          1 0 0 users:(("busd-timeout-8d",pid=774,fd=8))
+timeout n=96 run=1 exit=0 wall=45557ms disconnects=0
+    Hammering using 96 simultaneous clients while sharing the same connection took 45.547852411s
+timeout n=96 run=2 exit=1 wall=2065ms disconnects=1
+    Error: InputOutput(Os { code: 104, kind: ConnectionReset, message: "Connection reset by peer" })
+timeout n=96 run=3: after 15 s the client still runs; unix sockets (Recv-Q Send-Q):
+          1 66240 222976 users:(("dbus-bench-zbus",pid=1054,fd=9))
+          1 214916 70144 users:(("busd-timeout-8d",pid=1047,fd=10))
+          1 0 0 users:(("dbus-bench-zbus",pid=1054,fd=8),("dbus-bench-zbus",pid=1054,fd=6))
+          1 0 0 users:(("dbus-bench-zbus",pid=1054,fd=7))
+          1 0 0 users:(("busd-timeout-8d",pid=1047,fd=9))
+          1 0 0 users:(("busd-timeout-8d",pid=1047,fd=8))
+timeout n=96 run=3 exit=1 wall=32649ms disconnects=1
+    Error: InputOutput(Os { code: 104, kind: ConnectionReset, message: "Connection reset by peer" })
+timeout n=92 run=1 exit=0 wall=7910ms disconnects=0
+    Hammering using 92 simultaneous clients while sharing the same connection took 7.899920523s
+timeout n=92 run=2 exit=0 wall=10549ms disconnects=0
+    Hammering using 92 simultaneous clients while sharing the same connection took 10.480094402s
+timeout n=92 run=3 exit=0 wall=12193ms disconnects=0
+    Hammering using 92 simultaneous clients while sharing the same connection took 12.104572666s
+timeout n=88 run=1 exit=0 wall=8278ms disconnects=0
+    Hammering using 88 simultaneous clients while sharing the same connection took 8.257735157s
+timeout n=88 run=2 exit=0 wall=8386ms disconnects=0
+    Hammering using 88 simultaneous clients while sharing the same connection took 8.320372525s
+timeout n=88 run=3 exit=0 wall=9016ms disconnects=0
+    Hammering using 88 simultaneous clients while sharing the same connection took 8.929197838s
+baseline n=100 run=1 exit=0 wall=11207ms disconnects=0
+    Hammering using 100 simultaneous clients while sharing the same connection took 11.124022501s
+baseline n=100 run=2 exit=0 wall=10982ms disconnects=0
+    Hammering using 100 simultaneous clients while sharing the same connection took 10.955822937s
+baseline n=100 run=3 exit=0 wall=10663ms disconnects=0
+    Hammering using 100 simultaneous clients while sharing the same connection took 10.59987415s
+baseline n=200 run=1: after 15 s the client still runs; unix sockets (Recv-Q Send-Q):
+          1 182412 0 users:(("busd-baseline-0",pid=2414,fd=10))
+          1 0 197888 users:(("dbus-bench-zbus",pid=2421,fd=9))
+          1 0 0 users:(("dbus-bench-zbus",pid=2421,fd=8),("dbus-bench-zbus",pid=2421,fd=6))
+          1 0 0 users:(("dbus-bench-zbus",pid=2421,fd=7))
+          1 0 0 users:(("busd-baseline-0",pid=2414,fd=9))
+          1 0 0 users:(("busd-baseline-0",pid=2414,fd=8))
+baseline n=200 run=1 exit=0 wall=25199ms disconnects=0
+    Hammering using 200 simultaneous clients while sharing the same connection took 25.188309138s
+dbus-broker n=100 run=1 exit=0 wall=11576ms disconnects=0
+    Hammering using 100 simultaneous clients while sharing the same connection took 11.535282552s
+dbus-broker n=100 run=2 exit=0 wall=10941ms disconnects=0
+    Hammering using 100 simultaneous clients while sharing the same connection took 10.826279389s
+dbus-broker n=100 run=3 exit=0 wall=11896ms disconnects=0
+    Hammering using 100 simultaneous clients while sharing the same connection took 11.837994508s
+dbus-broker n=200 run=1: after 15 s the client still runs; unix sockets (Recv-Q Send-Q):
+          1 83052 0 users:(("dbus-bench-zbus",pid=3071,fd=9))
+          1 0 91136 users:(("dbus-broker",pid=3074,fd=8))
+          1 0 0 users:(("dbus-broker-lau",pid=3065,fd=9))
+          1 0 0 users:(("dbus-broker-lau",pid=3065,fd=8))
+          1 0 0 users:(("dbus-broker",pid=3074,fd=9))
+          1 0 0 users:(("dbus-broker",pid=3074,fd=4),("dbus-broker-lau",pid=3065,fd=4))
+dbus-broker n=200 run=1 exit=0 wall=24738ms disconnects=0
+    Hammering using 200 simultaneous clients while sharing the same connection took 24.723291715s

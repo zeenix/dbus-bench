@@ -1,0 +1,82 @@
+read-ahead 64 n=100 run=1 exit=1 wall=3180ms disconnects=1
+    Error: InputOutput(Os { code: 104, kind: ConnectionReset, message: "Connection reset by peer" })
+read-ahead 64 n=100 run=2 exit=1 wall=2058ms disconnects=1
+    Error: InputOutput(Os { code: 104, kind: ConnectionReset, message: "Connection reset by peer" })
+read-ahead 64 n=100 run=3 exit=1 wall=2070ms disconnects=1
+    Error: InputOutput(Os { code: 104, kind: ConnectionReset, message: "Connection reset by peer" })
+read-ahead 128 n=100 run=1 exit=0 wall=11929ms disconnects=0
+    Hammering using 100 simultaneous clients while sharing the same connection took 11.910398352s
+read-ahead 128 n=100 run=2 exit=0 wall=11580ms disconnects=0
+    Hammering using 100 simultaneous clients while sharing the same connection took 11.570905853s
+read-ahead 128 n=100 run=3 exit=0 wall=11071ms disconnects=0
+    Hammering using 100 simultaneous clients while sharing the same connection took 10.984587542s
+read-ahead 256 n=100 run=1 exit=0 wall=12581ms disconnects=0
+    Hammering using 100 simultaneous clients while sharing the same connection took 12.567424389s
+read-ahead 256 n=100 run=2 exit=0 wall=11305ms disconnects=0
+    Hammering using 100 simultaneous clients while sharing the same connection took 11.273847236s
+read-ahead 256 n=100 run=3 exit=0 wall=11490ms disconnects=0
+    Hammering using 100 simultaneous clients while sharing the same connection took 11.475185218s
+read-ahead 1024 n=100 run=1 exit=0 wall=11372ms disconnects=0
+    Hammering using 100 simultaneous clients while sharing the same connection took 11.315891675s
+read-ahead 1024 n=100 run=2 exit=0 wall=11276ms disconnects=0
+    Hammering using 100 simultaneous clients while sharing the same connection took 11.245542442s
+read-ahead 1024 n=100 run=3 exit=0 wall=11303ms disconnects=0
+    Hammering using 100 simultaneous clients while sharing the same connection took 11.282873195s
+read-ahead 256 n=200 run=1: after 15 s the client still runs; unix sockets (Recv-Q Send-Q):
+          1 66744 17152 users:(("dbus-bench-zbus",pid=4720,fd=9))
+          1 16516 77056 users:(("busd-read-ahead",pid=4714,fd=10))
+          1 0 0 users:(("dbus-bench-zbus",pid=4720,fd=8),("dbus-bench-zbus",pid=4720,fd=6))
+          1 0 0 users:(("dbus-bench-zbus",pid=4720,fd=7))
+          1 0 0 users:(("busd-read-ahead",pid=4714,fd=9))
+          1 0 0 users:(("busd-read-ahead",pid=4714,fd=8))
+read-ahead 256 n=200 run=1 exit=0 wall=25371ms disconnects=0
+    Hammering using 200 simultaneous clients while sharing the same connection took 25.362494627s
+read-ahead 256 n=200 run=2: after 15 s the client still runs; unix sockets (Recv-Q Send-Q):
+          1 134440 0 users:(("dbus-bench-zbus",pid=4925,fd=9))
+          1 0 167168 users:(("busd-read-ahead",pid=4918,fd=10))
+          1 0 0 users:(("dbus-bench-zbus",pid=4925,fd=8),("dbus-bench-zbus",pid=4925,fd=6))
+          1 0 0 users:(("dbus-bench-zbus",pid=4925,fd=7))
+          1 0 0 users:(("busd-read-ahead",pid=4918,fd=9))
+          1 0 0 users:(("busd-read-ahead",pid=4918,fd=8))
+read-ahead 256 n=200 run=2 exit=0 wall=24830ms disconnects=0
+    Hammering using 200 simultaneous clients while sharing the same connection took 24.82037177s
+read-ahead 256 n=300 run=1 exit=1 wall=2160ms disconnects=1
+    Error: InputOutput(Os { code: 104, kind: ConnectionReset, message: "Connection reset by peer" })
+read-ahead 256 n=300 run=2 exit=1 wall=2056ms disconnects=1
+    Error: InputOutput(Os { code: 104, kind: ConnectionReset, message: "Connection reset by peer" })
+read-ahead 1024 n=200 run=1: after 15 s the client still runs; unix sockets (Recv-Q Send-Q):
+          1 49988 0 users:(("dbus-bench-zbus",pid=5229,fd=9))
+          1 0 56832 users:(("busd-read-ahead",pid=5222,fd=10))
+          1 0 0 users:(("dbus-bench-zbus",pid=5229,fd=8),("dbus-bench-zbus",pid=5229,fd=6))
+          1 0 0 users:(("dbus-bench-zbus",pid=5229,fd=7))
+          1 0 0 users:(("busd-read-ahead",pid=5222,fd=9))
+          1 0 0 users:(("busd-read-ahead",pid=5222,fd=8))
+read-ahead 1024 n=200 run=1 exit=0 wall=24674ms disconnects=0
+    Hammering using 200 simultaneous clients while sharing the same connection took 24.665878514s
+read-ahead 1024 n=200 run=2: after 15 s the client still runs; unix sockets (Recv-Q Send-Q):
+          1 82644 0 users:(("dbus-bench-zbus",pid=5434,fd=9))
+          1 0 85760 users:(("busd-read-ahead",pid=5427,fd=10))
+          1 0 0 users:(("dbus-bench-zbus",pid=5434,fd=8),("dbus-bench-zbus",pid=5434,fd=6))
+          1 0 0 users:(("dbus-bench-zbus",pid=5434,fd=7))
+          1 0 0 users:(("busd-read-ahead",pid=5427,fd=9))
+          1 0 0 users:(("busd-read-ahead",pid=5427,fd=8))
+read-ahead 1024 n=200 run=2 exit=0 wall=23881ms disconnects=0
+    Hammering using 200 simultaneous clients while sharing the same connection took 23.873202941s
+read-ahead 1024 n=300 run=1: after 15 s the client still runs; unix sockets (Recv-Q Send-Q):
+          1 49988 0 users:(("dbus-bench-zbus",pid=5647,fd=9))
+          1 0 56832 users:(("busd-read-ahead",pid=5640,fd=10))
+          1 0 0 users:(("dbus-bench-zbus",pid=5647,fd=8),("dbus-bench-zbus",pid=5647,fd=6))
+          1 0 0 users:(("dbus-bench-zbus",pid=5647,fd=7))
+          1 0 0 users:(("busd-read-ahead",pid=5640,fd=9))
+          1 0 0 users:(("busd-read-ahead",pid=5640,fd=8))
+read-ahead 1024 n=300 run=1 exit=0 wall=43871ms disconnects=0
+    Hammering using 300 simultaneous clients while sharing the same connection took 43.86102146s
+read-ahead 1024 n=300 run=2: after 15 s the client still runs; unix sockets (Recv-Q Send-Q):
+          1 66800 0 users:(("dbus-bench-zbus",pid=5875,fd=9))
+          1 0 77824 users:(("busd-read-ahead",pid=5868,fd=10))
+          1 0 0 users:(("dbus-bench-zbus",pid=5875,fd=8),("dbus-bench-zbus",pid=5875,fd=6))
+          1 0 0 users:(("dbus-bench-zbus",pid=5875,fd=7))
+          1 0 0 users:(("busd-read-ahead",pid=5868,fd=9))
+          1 0 0 users:(("busd-read-ahead",pid=5868,fd=8))
+read-ahead 1024 n=300 run=2 exit=0 wall=43300ms disconnects=0
+    Hammering using 300 simultaneous clients while sharing the same connection took 43.29022863s

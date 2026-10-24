@@ -1,0 +1,15 @@
+--- a/src/peer/mod.rs
++++ b/src/peer/mod.rs
+@@ -45,6 +45,12 @@
+             .server(guid)
+             .p2p()
+             .auth_mechanism(auth_mechanism)
++            .max_queued(
++                std::env::var("BUSD_MAX_QUEUED")
++                    .ok()
++                    .and_then(|n| n.parse().ok())
++                    .unwrap_or(std::num::NonZeroUsize::new(64).unwrap()),
++            )
+             .build_message_stream()
+             .await?;
+         let conn = Connection::from(&msg_stream);

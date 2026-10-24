@@ -2,6 +2,7 @@
 name = "dbus-bench"
 version = "0.1.0"
 edition = "2021"
+default-run = "dbus-bench"
 
 [dependencies]
 futures-util = "0.3.30"

@@ -1,0 +1,40 @@
+concurrent100 whole client run=1 exit=1 wall=9123ms disconnects=1
+    Hammering using a single client took 199.525893ms
+    Hammering using 100 simultaneous clients took 8.356308045s
+    Error: InputOutput(Os { code: 104, kind: ConnectionReset, message: "Connection reset by peer" })
+concurrent100 n=100 run=1 exit=1 wall=310ms disconnects=1
+    Error: InputOutput(Os { code: 104, kind: ConnectionReset, message: "Connection reset by peer" })
+concurrent100 n=100 run=2 exit=1 wall=2253ms disconnects=1
+    Error: InputOutput(Os { code: 104, kind: ConnectionReset, message: "Connection reset by peer" })
+concurrent100 n=100 run=3 exit=1 wall=1234ms disconnects=1
+    Error: InputOutput(Os { code: 104, kind: ConnectionReset, message: "Connection reset by peer" })
+concurrent100 n=96 run=1 exit=0 wall=12087ms disconnects=0
+    Hammering using 96 simultaneous clients while sharing the same connection took 12.026599997s
+concurrent100 n=96 run=2 exit=1 wall=310ms disconnects=1
+    Error: InputOutput(Os { code: 104, kind: ConnectionReset, message: "Connection reset by peer" })
+concurrent100 n=96 run=3 exit=1 wall=311ms disconnects=1
+    Error: InputOutput(Os { code: 104, kind: ConnectionReset, message: "Connection reset by peer" })
+concurrent100 n=92 run=1 exit=0 wall=8527ms disconnects=0
+    Hammering using 92 simultaneous clients while sharing the same connection took 8.432966037s
+concurrent100 n=92 run=2 exit=0 wall=7881ms disconnects=0
+    Hammering using 92 simultaneous clients while sharing the same connection took 7.779218832s
+concurrent100 n=92 run=3 exit=0 wall=7668ms disconnects=0
+    Hammering using 92 simultaneous clients while sharing the same connection took 7.622064872s
+concurrent100 n=88 run=1 exit=0 wall=7904ms disconnects=0
+    Hammering using 88 simultaneous clients while sharing the same connection took 7.825580762s
+concurrent100 n=88 run=2 exit=0 wall=7803ms disconnects=0
+    Hammering using 88 simultaneous clients while sharing the same connection took 7.757412783s
+concurrent100 n=88 run=3 exit=0 wall=8000ms disconnects=0
+    Hammering using 88 simultaneous clients while sharing the same connection took 7.959710092s
+concurrent100 n=80 run=1 exit=0 wall=7793ms disconnects=0
+    Hammering using 80 simultaneous clients while sharing the same connection took 7.721063386s
+concurrent100 n=80 run=2 exit=0 wall=7562ms disconnects=0
+    Hammering using 80 simultaneous clients while sharing the same connection took 7.48851249s
+concurrent100 n=80 run=3 exit=0 wall=8475ms disconnects=0
+    Hammering using 80 simultaneous clients while sharing the same connection took 8.371557624s
+concurrent100 n=64 run=1 exit=0 wall=6582ms disconnects=0
+    Hammering using 64 simultaneous clients while sharing the same connection took 6.492027402s
+concurrent100 n=64 run=2 exit=0 wall=6266ms disconnects=0
+    Hammering using 64 simultaneous clients while sharing the same connection took 6.229957611s
+concurrent100 n=64 run=3 exit=0 wall=6280ms disconnects=0
+    Hammering using 64 simultaneous clients while sharing the same connection took 6.269395187s
