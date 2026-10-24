@@ -55,9 +55,11 @@
 #
 # Usage: scripts/compare-send-timeout.sh
 #
-# For example, TIMEOUT_REV=7f3ba5a ZRUNTIME_REV=99e2ebd scripts/compare-send-timeout.sh measures the
-# commit of zruntime that starts the clock of a time limit only once a send has to wait, with the
-# limit of 100 ms.
+# For example, this measures the commit of zruntime that starts the clock of a time limit only once
+# a send has to wait, with the limit of 100 ms:
+#
+#     TIMEOUT_REV=7f3ba5a7b8289a390a01245c8b19b1f3f5d4ad6c \
+#         ZRUNTIME_REV=99e2ebd807723177bec5d7c5216e48448c3a91c9 scripts/compare-send-timeout.sh
 #
 # The environment sets the rest. ROUNDS (default: 60), SHARED_ROUNDS (default: 40) and
 # READ_AHEAD_ROUNDS (default: 30) are the numbers of rounds of the comparisons of the calls, the

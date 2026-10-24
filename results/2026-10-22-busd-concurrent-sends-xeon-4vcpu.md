@@ -141,5 +141,6 @@ rather than 1 s.
 dbus-bench, with the binaries named as it says. On the VM, they were named after their commits:
 `busd-baseline-0c52e9c`, `busd-timeout-8d57e20` and `busd-concurrent100-7f3ba5a`, and the clients
 `dbus-bench-zbus6`, `shared-zbus6` and `dbus-bench-zbus43-n`. To compare concurrent100 with the
-queue and the revert elsewhere, run `TIMEOUT_REV=7f3ba5a scripts/compare-send-timeout.sh`, which
+queue and the revert elsewhere, run
+`TIMEOUT_REV=7f3ba5a7b8289a390a01245c8b19b1f3f5d4ad6c scripts/compare-send-timeout.sh`, which
 builds it as its timeout.

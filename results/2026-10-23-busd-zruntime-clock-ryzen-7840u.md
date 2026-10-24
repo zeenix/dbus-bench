@@ -181,8 +181,13 @@ queues the messages of each client too, and writes up to 16 of them with each `s
 
 ## Reproducing
 
-`TIMEOUT_REV=7f3ba5a ZRUNTIME_REV=99e2ebd scripts/compare-send-timeout.sh`, as it is at d15d922,
+```sh
+TIMEOUT_REV=7f3ba5a7b8289a390a01245c8b19b1f3f5d4ad6c \
+    ZRUNTIME_REV=99e2ebd807723177bec5d7c5216e48448c3a91c9 scripts/compare-send-timeout.sh
+```
+
 builds the brokers and runs all of this, in about 39 minutes on this laptop once the builds are
 made, and writes these files to `$WORK/send-timeout-results-7f3ba5a-zruntime-99e2ebd`, with the
 comparisons in pairs next to the others rather than in `stats`. busd's commits are those that the
-`ccr-314882eb-9cvuxt` branch of zeenix/busd had then: the branch was rebased onto busd's main since.
+`ccr-314882eb-9cvuxt` branch of zeenix/busd had then: the branch was rebased onto busd's main since,
+so the script fetches them by their full hashes, as it does since 01af52e.
