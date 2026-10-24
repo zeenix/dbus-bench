@@ -23,10 +23,12 @@
 #
 # It expects a checkout of busd under $CHECKOUT (default: ~/checkout), laid out as on GitHub:
 # $CHECKOUT/z-galaxy/busd. That checkout, and the one of dbus-bench that this script is in, are
-# left as they are, apart from fetching the commits measured if they lack them: the baseline from
-# z-galaxy/busd, the revert and the timeout from the ccr-314882eb-9cvuxt branch of zeenix/busd, and
-# the commit of the client on zbus 4.3 from the some-changes branch of zeenix/dbus-bench. Each
-# build of busd, and the client on zbus 4.3, is made from an export of its commit, under $WORK
+# left as they are, apart from fetching the commits measured, by their hashes, if they lack them:
+# the baseline from z-galaxy/busd, the revert and the timeout from zeenix/busd, and the commit of
+# the client on zbus 4.3 from zeenix/dbus-bench. The revert and the timeout were on the
+# ccr-314882eb-9cvuxt branch of zeenix/busd, since rebased, which is where a short TIMEOUT_REV,
+# which a fetch cannot name, is looked for: name a commit that the branch no longer has in full.
+# Each build of busd, and the client on zbus 4.3, is made from an export of its commit, under $WORK
 # (default: /tmp/send-timeout-bench), and is reused by the next run. The clients of this repository
 # are built in its checkout. The results go to $WORK/send-timeout-results-COMMIT, where COMMIT is
 # the short hash of the timeout commit, so that a run of each of those commits keeps its own: each
@@ -46,10 +48,10 @@
 # timeout-before what the time limit costs with and without it, and dbus-broker and dbus-daemon
 # against baseline and timeout where busd stands next to them. baseline uses no time limit of
 # zruntime's, so one build of it does for both. That needs a checkout of zruntime too, at
-# $CHECKOUT/z-galaxy/zruntime, which the commit is fetched into from the ccr-314882eb-9cvuxt branch
-# of zeenix/zruntime if it lacks it. The exports of zruntime are under $WORK as well, and the
-# results go to $WORK/send-timeout-results-COMMIT-zruntime-ZCOMMIT, where ZCOMMIT is the short hash
-# of the commit of zruntime.
+# $CHECKOUT/z-galaxy/zruntime, which the commit is fetched into from zeenix/zruntime if it lacks
+# it, by its hash or, for a short one, with the ccr-314882eb-9cvuxt branch. The exports of zruntime
+# are under $WORK as well, and the results go to $WORK/send-timeout-results-COMMIT-zruntime-ZCOMMIT,
+# where ZCOMMIT is the short hash of the commit of zruntime.
 #
 # Usage: scripts/compare-send-timeout.sh
 #
@@ -114,10 +116,17 @@ zbus43_rev=7b5f2351d1c8dab30f4b1e1f9b70b9f3bad8208c
 # The commit of zruntime to measure, if any: see the top.
 zruntime_rev=${ZRUNTIME_REV:-}
 
-# Makes sure that the repository $1 has the commit $4, by fetching $3 from $2 if it lacks it.
+# Makes sure that the repository $1 has the commit $4, by fetching it from $2 if it lacks it: by its
+# hash, which reaches a commit that the branch $3 no longer has, as a rebase of the branch leaves
+# behind, or, for a short hash, which a fetch cannot name, with that branch.
 have() {
-    git -C "$1" cat-file -e "$4^{commit}" 2>/dev/null || git -C "$1" fetch -q "$2" "$3"
-    git -C "$1" cat-file -e "$4^{commit}"
+    git -C "$1" cat-file -e "$4^{commit}" 2>/dev/null ||
+        git -C "$1" fetch -q "$2" "$4" 2>/dev/null ||
+        git -C "$1" fetch -q "$2" "$3"
+    if ! git -C "$1" cat-file -e "$4^{commit}" 2>/dev/null; then
+        echo "$2 gave no commit $4: name a commit that its branch $3 no longer has in full." >&2
+        exit 1
+    fi
 }
 
 # The first line that the command prints, whatever becomes of the command.
@@ -163,11 +172,14 @@ export_rev() {
 }
 
 # Has the export of busd in the current directory build on the export of zruntime in $1, rather
-# than on the release of zruntime that its lock file names. The patch alone leaves the lock file on
-# that release, so zruntime, and only zruntime, is moved off it there, and the build can stay
+# than on the zruntime that its lock file names. The patch goes in the export's Cargo
+# configuration, which takes precedence over a patch of zruntime in busd's own manifest, as a commit
+# that waits for a release of zruntime has. The patch alone leaves the lock file on the zruntime
+# that it names, so zruntime, and only zruntime, is moved off it there, and the build can stay
 # locked.
 use_zruntime() {
-    printf '\n[patch.crates-io]\nzruntime = { path = "%s" }\n' "$1" >> Cargo.toml
+    mkdir -p .cargo
+    printf '[patch.crates-io]\nzruntime = { path = "%s" }\n' "$1" >> .cargo/config.toml
     cargo update -q -p zruntime
 }
 
@@ -240,7 +252,6 @@ compare_zruntime() {
 }
 
 have "$busd" https://github.com/z-galaxy/busd main "$baseline_rev"
-have "$busd" https://github.com/zeenix/busd ccr-314882eb-9cvuxt "$revert_rev"
 have "$busd" https://github.com/zeenix/busd ccr-314882eb-9cvuxt "$timeout_rev"
 # TIMEOUT_REV may be a short hash: the results name the full one.
 timeout_rev=$(git -C "$busd" rev-parse --verify "$timeout_rev^{commit}")
@@ -263,6 +274,7 @@ if [ -n "$zruntime_rev" ]; then
         "$zruntime_before_dir"
     busd_builds=(zr-baseline zr-timeout zr-timeout-before)
 else
+    have "$busd" https://github.com/zeenix/busd ccr-314882eb-9cvuxt "$revert_rev"
     have "$bench" https://github.com/zeenix/dbus-bench some-changes "$zbus43_rev"
     export_rev "$busd" "$baseline_rev" "$work/busd-baseline"
     export_rev "$busd" "$revert_rev" "$work/busd-revert"
