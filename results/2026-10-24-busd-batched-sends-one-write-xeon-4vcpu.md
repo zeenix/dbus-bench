@@ -215,8 +215,9 @@ in more detail.
 
 A call of this phase, of 16 KiB, takes a batch past 16 KiB, and batched writes it to the client
 along with the replies before it in its batch, where batched-before wrote the replies with one
-system call and the call with another. Taking the multi-client phase's CPU time out of each run's
-whole, the phase's means are:
+system call and the call with another: under strace, over 4 s of the phase, batched-before wrote
+each of 7,840 calls on its own, and batched 1,393 of 8,212 along with replies. Taking the
+multi-client phase's CPU time out of each run's whole, the phase's means are:
 
 | Broker | Phase | Client CPU | Broker CPU | Client's waits | Broker's waits |
 |---|---:|---:|---:|---:|---:|
