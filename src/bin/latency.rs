@@ -11,17 +11,24 @@
 //! - `fanout_delivery`: how long each of `FANOUT_SIGNALS` signals, which one connection
 //!   broadcasts back to back, takes to reach each of `FANOUT_SUBSCRIBERS` subscribers, as in
 //!   `fanout.rs`: from just before the emitter builds it until the subscriber has taken it off
-//!   its stream. The signals queue up behind each other, so the later ones wait longer.
+//!   its stream. The signals queue up behind each other in the broker, so the later ones wait
+//!   longer. Those that a broker keeps the emitter from sending, by taking its signals off its
+//!   socket slowly, wait before they are timed, though: how long the scenario takes is what tells
+//!   how fast a broker gets the signals through.
 //!
 //! Each distribution has the number of samples, the seconds that the scenario took, and the mean,
 //! the median (`p50`), the `p90`, the `p99`, the `p999` and the largest of the samples, in
 //! microseconds. A percentile is the nearest-rank one: the sample at the rank that the fraction
 //! of the samples ends at, rounded up, counting from the smallest.
 //!
-//! The clients and the services run on one single-threaded runtime, like `main.rs` does, so what
-//! is timed includes the time that this process takes to get round to a message, as well as the
-//! time that the broker takes. The scenarios fail on a failed call, and on a signal that is lost
-//! or arrives out of order, and the process exits without printing the object.
+//! The clients and the services of the round trips run on one single-threaded runtime, like
+//! `main.rs` does, so what is timed includes the time that this process takes to get round to a
+//! message, as well as the time that the broker takes. Each subscriber of `fanout_delivery` runs
+//! on a thread of its own instead, with a runtime of its own, as a process of its own would: it
+//! takes each signal off its socket as soon as the broker has written it there, rather than when
+//! one thread for all of them gets round to it, so that how long the signals wait is the broker's
+//! doing. The emitter has the main thread to itself. The scenarios fail on a failed call, and on a
+//! signal that is lost or arrives out of order, and the process exits without printing the object.
 
 use std::{
     num::NonZeroUsize,
@@ -29,10 +36,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use futures_util::{
-    future::{try_join, try_join_all},
-    TryStreamExt,
-};
+use futures_util::{future::try_join_all, TryStreamExt};
 use serde::{Deserialize, Serialize};
 use serde_bytes::Bytes;
 use zbus::{message::Type, Connection, MatchRule, MessageStream};
@@ -84,8 +88,9 @@ const INTERFACE: &str = "org.dbus2.benchmark.Fanout";
 /// The member of the signals of `fanout_delivery`.
 const MEMBER: &str = "Delivery";
 
-/// Anything that goes wrong ends the run, so the errors need no more than their message.
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+/// Anything that goes wrong ends the run, so the errors need no more than their message. They are
+/// `Send`, so that the thread of a subscriber can hand its error over.
+type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 #[derive(Debug)]
 struct Service;
@@ -162,20 +167,74 @@ async fn fanout_delivery() -> Result<Stats> {
     let queue = NonZeroUsize::new(FANOUT_SIGNALS + QUEUE_SPARE).expect("room for the spare");
 
     let emitter = zbus::connection::Builder::session().build().await?;
+    let (subscribed, subscriptions) = mpsc::channel();
+    let subscribers: Vec<_> = (0..FANOUT_SUBSCRIBERS)
+        .map(|_| {
+            let rule = rule.clone();
+            let subscribed = subscribed.clone();
+            std::thread::spawn(move || subscriber(rule, queue, subscribed))
+        })
+        .collect();
+    drop(subscribed);
     // Each subscribes before any signal is sent: the bus has registered the match rule by the
     // time that `for_match_rule` returns, as it waits for the bus to reply to `AddMatch`.
-    let mut subscribers =
-        try_join_all((0..FANOUT_SUBSCRIBERS).map(|_| subscribe(&rule, queue))).await?;
+    for _ in 0..FANOUT_SUBSCRIBERS {
+        subscriptions
+            .recv()
+            .map_err(|_| "a subscriber ended before it subscribed")??;
+    }
 
     // The signals carry the time they were sent at as a number of nanoseconds since this.
     let epoch = Instant::now();
-    let (_, delays) = try_join(
-        emit(&emitter, &data, epoch),
-        try_join_all(subscribers.iter_mut().map(|stream| receive(stream, epoch))),
-    )
-    .await?;
+    emit(&emitter, &data, epoch).await?;
+    let mut delays = Vec::with_capacity(FANOUT_SIGNALS * FANOUT_SUBSCRIBERS);
+    let mut last = epoch;
+    for subscriber in subscribers {
+        let received = subscriber.join().map_err(|_| "a subscriber panicked")??;
+        for (seq, (sent, taken)) in received.into_iter().enumerate() {
+            let Some(delay) = nanos(taken.duration_since(epoch)).checked_sub(sent) else {
+                return Err(format!("signal {seq} arrived before it was sent").into());
+            };
+            delays.push(delay);
+            last = last.max(taken);
+        }
+    }
 
-    Ok(Stats::new(delays.concat(), epoch.elapsed()))
+    Ok(Stats::new(delays, last.duration_since(epoch)))
+}
+
+/// A subscriber of `fanout_delivery`, on a thread of its own, with a single-threaded runtime of its
+/// own: subscribes to the signals that `rule` matches, says on `subscribed` whether it did, and
+/// receives the signals.
+///
+/// Returns, for each signal, the time that it carries and when it was taken off the stream.
+fn subscriber(
+    rule: MatchRule<'static>,
+    queue: NonZeroUsize,
+    subscribed: mpsc::Sender<Result<()>>,
+) -> Result<Vec<(u64, Instant)>> {
+    let subscription = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(Into::into)
+        .and_then(|runtime| {
+            let stream = runtime.block_on(subscribe(&rule, queue))?;
+
+            Ok((runtime, stream))
+        });
+    let (runtime, mut stream) = match subscription {
+        Ok(subscription) => subscription,
+        Err(e) => {
+            // The thread that waits for the subscribers gives up on the first that fails, with
+            // its error.
+            let _ = subscribed.send(Err(e));
+
+            return Err("the subscriber could not subscribe".into());
+        }
+    };
+    let _ = subscribed.send(Ok(()));
+
+    runtime.block_on(receive(&mut stream))
 }
 
 /// A service that is at a well-known name of its own, and a proxy to it on its connection, so
@@ -240,14 +299,14 @@ async fn emit(conn: &Connection, data: &[u8], epoch: Instant) -> Result<()> {
 
 /// Receives the signals of `fanout_delivery` from `stream`, checking that they arrive in order.
 ///
-/// Returns how long each took to arrive, from the time that it carries until the stream gave it
-/// up, in nanoseconds.
-async fn receive(stream: &mut MessageStream, epoch: Instant) -> Result<Vec<u64>> {
-    let mut delays = Vec::with_capacity(FANOUT_SIGNALS);
+/// Returns, for each, the time that it carries, in nanoseconds since the emitter's epoch, and when
+/// the stream gave it up.
+async fn receive(stream: &mut MessageStream) -> Result<Vec<(u64, Instant)>> {
+    let mut received = Vec::with_capacity(FANOUT_SIGNALS);
     for expected in 0..FANOUT_SIGNALS as u64 {
         let msg = stream.try_next().await?;
         // Taken before anything else is done with the signal, so as to count only the delivery.
-        let received = nanos(epoch.elapsed());
+        let taken = Instant::now();
         let Some(msg) = msg else {
             let count = FANOUT_SIGNALS;
             return Err(format!("the stream ended after {expected} of {count} signals").into());
@@ -264,13 +323,10 @@ async fn receive(stream: &mut MessageStream, epoch: Instant) -> Result<Vec<u64>>
                 format!("signal {seq} carried {len} bytes, not {FANOUT_PAYLOAD_LEN}").into(),
             );
         }
-        let Some(delay) = received.checked_sub(sent) else {
-            return Err(format!("signal {seq} arrived before it was sent").into());
-        };
-        delays.push(delay);
+        received.push((sent, taken));
     }
 
-    Ok(delays)
+    Ok(received)
 }
 
 /// The nanoseconds in `duration`.
