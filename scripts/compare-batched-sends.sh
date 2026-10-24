@@ -1,5 +1,5 @@
 #!/bin/bash
-# Compares three builds of busd that differ in how they send what they forward to a client, along
+# Compares the builds of busd that differ in how they send what they forward to a client, along
 # with dbus-broker and dbus-daemon, as far as they are installed:
 #
 # * queue: busd with a queue for each client (z-galaxy/busd#376), and a task of the client's own
@@ -9,31 +9,36 @@
 # * batched: busd that forwards the messages of each peer in batches, of those that are there
 #   already, and writes those of a batch that go to a client in one go, with several small messages
 #   in each system call, through `Connection::send_all` of zbus (z-galaxy/zbus#2078). It is the
-#   commit that BATCHED_REV names, 4f346a3 of the ccr-fd1ce738-0xtuf0 branch of zeenix/busd by
-#   default, which builds on zbus from the branch of the same name of zeenix/zbus.
+#   commit that BATCHED_REV names, ac6e6fa of the ccr-fd1ce738-0xtuf0 branch of zeenix/busd by
+#   default, which builds on zbus from the branch of the same name of zeenix/zbus;
+# * batched-before: the commit that BEFORE_REV names, 4f346a3 by default, which forwards in batches
+#   as batched does, on an earlier commit of that zbus, which ended each write before the message
+#   that would take it past 16 KiB, rather than with it, so that a batch that went past 16 KiB took
+#   two writes. An empty BEFORE_REV leaves it out.
 #
-# All three run on the commit of zruntime that busd's main branch pins: baseline and batched as
-# their lock files have it, and queue through a patch of the zruntime that its lock file names.
+# All of them run on the commit of zruntime that busd's main branch pins: baseline and the batched
+# builds as their lock files have it, and queue through a patch of the zruntime that its lock file
+# names.
 #
 # It runs the paired comparisons of results/2026-10-23-busd-zruntime-clock-ryzen-7840u.md between
 # them: method calls, signals and latencies, with the clients on zbus 6, and the connection that 100
 # proxies share, then 100 connections, each of which serves the object that it calls. Every round
 # runs each broker once, in an order shuffled for each round, after WARMUP rounds that the tables
 # leave out. It writes the tables (.md), the runs (.json) and the comparisons in pairs (.stats.md
-# and .stats.json): batched against baseline and queue, baseline against queue, and dbus-broker and
-# dbus-daemon against baseline and batched.
+# and .stats.json): batched against baseline, queue and batched-before, baseline against queue, and
+# dbus-broker and dbus-daemon against baseline and batched.
 #
 # It expects a checkout of busd under $CHECKOUT (default: ~/checkout), laid out as on GitHub:
-# $CHECKOUT/z-galaxy/busd. That checkout, and the one of dbus-bench that this script is in, are
-# left as they are, apart from fetching the commits measured, by their hashes, if they lack them:
-# queue and baseline from z-galaxy/busd, and the batched build from zeenix/busd. A short
-# BATCHED_REV, which a fetch cannot name, is looked for on the ccr-fd1ce738-0xtuf0 branch: name a
+# $CHECKOUT/z-galaxy/busd. That checkout, and the one of dbus-bench that this script is in, are left
+# as they are, apart from fetching the commits measured, by their hashes, if they lack them: queue
+# and baseline from z-galaxy/busd, and the batched builds from zeenix/busd. A short BATCHED_REV or
+# BEFORE_REV, which a fetch cannot name, is looked for on the ccr-fd1ce738-0xtuf0 branch: name a
 # commit that the branch no longer has in full. Each build of busd is made from an export of its
 # commit, under $WORK (default: /tmp/batched-sends-bench), and is reused by the next run. The
 # clients of this repository are built in its checkout. The results go to
-# $WORK/batched-sends-results-COMMIT, where COMMIT is the short hash of the batched commit: each
-# run empties it, and writes its results there, along with environment.txt, which notes the
-# versions that the tables do not name. The archive is $WORK/batched-sends-results-COMMIT.tar.gz.
+# $WORK/batched-sends-results-COMMIT, where COMMIT is the short hash of the batched commit: each run
+# empties it, and writes its results there, along with environment.txt, which notes the versions
+# that the tables do not name. The archive is $WORK/batched-sends-results-COMMIT.tar.gz.
 #
 # Usage: scripts/compare-batched-sends.sh
 #
@@ -68,11 +73,13 @@ bench=$(cd "$(dirname "$0")/.." && pwd)
 busd=$checkout/z-galaxy/busd
 
 # The commits measured: busd's main branch with the queue for each client; busd's main branch since,
-# with the time limit of 100 ms on each send to a client (z-galaxy/busd#382); and busd that forwards
-# in batches. And the commit of zruntime that the latter two pin, which queue is built on too.
+# with the time limit of 100 ms on each send to a client (z-galaxy/busd#382); busd that forwards in
+# batches; and, unless BEFORE_REV is empty, an earlier commit of it. And the commit of zruntime that
+# all but the first pin, which queue is built on too.
 queue_rev=0c52e9c60bddc518480ff68da18f3c2ec8cc3f3c
 baseline_rev=0b89e3a5b746dd7e739706e4ab4e6b15ec89413a
-batched_rev=${BATCHED_REV:-4f346a36a23efe3a88b9539ff1130c55c660be70}
+batched_rev=${BATCHED_REV:-ac6e6fa16f5b0b63cce856dc618ca2328c51e713}
+before_rev=${BEFORE_REV-4f346a36a23efe3a88b9539ff1130c55c660be70}
 zruntime_rev=99e2ebd807723177bec5d7c5216e48448c3a91c9
 
 # Makes sure that the repository $1 has the commit $4, by fetching it from $2 if it lacks it: by its
@@ -138,13 +145,22 @@ use_zruntime() {
 have "$busd" https://github.com/z-galaxy/busd main "$queue_rev"
 have "$busd" https://github.com/z-galaxy/busd main "$baseline_rev"
 have "$busd" https://github.com/zeenix/busd ccr-fd1ce738-0xtuf0 "$batched_rev"
-# BATCHED_REV may be a short hash: the results name the full one.
+# BATCHED_REV and BEFORE_REV may be short hashes: the results name the full ones.
 batched_rev=$(git -C "$busd" rev-parse --verify "$batched_rev^{commit}")
+builds=(queue baseline batched)
+if [ -n "$before_rev" ]; then
+    have "$busd" https://github.com/zeenix/busd ccr-fd1ce738-0xtuf0 "$before_rev"
+    before_rev=$(git -C "$busd" rev-parse --verify "$before_rev^{commit}")
+    builds+=(batched-before)
+fi
 
 export_rev "$busd" "$queue_rev" "$work/busd-queue" use_zruntime "$zruntime_rev"
 export_rev "$busd" "$baseline_rev" "$work/busd-baseline"
 export_rev "$busd" "$batched_rev" "$work/busd-batched"
-for build in queue baseline batched; do
+if [ -n "$before_rev" ]; then
+    export_rev "$busd" "$before_rev" "$work/busd-batched-before"
+fi
+for build in "${builds[@]}"; do
     (cd "$work/busd-$build" && cargo build --release --locked)
 done
 (cd "$bench" && cargo build --release --locked)
@@ -152,7 +168,7 @@ done
 # The scripts want the binaries in one directory, under these names.
 bin=$work/bin
 mkdir -p "$bin"
-for build in queue baseline batched; do
+for build in "${builds[@]}"; do
     cp "$work/busd-$build/target/release/busd" "$bin/busd-$build"
 done
 for client in dbus-bench fanout latency shared; do
@@ -187,6 +203,12 @@ brokers=(
 meta=(--meta "rustc=$(first_line rustc --version)" --meta "queue=$queue_rev"
     --meta "baseline=$baseline_rev" --meta "batched=$batched_rev" --meta "zruntime=$zruntime_rev")
 pairs=(baseline:batched queue:batched queue:baseline)
+if [ -n "$before_rev" ]; then
+    brokers+=(--broker batched-before
+        "RUST_LOG=busd=debug $bin/busd-batched-before --address {address}")
+    meta+=(--meta "batched-before=$before_rev")
+    pairs+=(batched-before:batched)
+fi
 # dbus-broker runs only under its launcher, which takes its socket from systemd's socket activation
 # and connects to the bus that $DBUS_SESSION_BUS_ADDRESS names, the one it launches here rather
 # than the desktop's: see scripts/compare-brokers.py.
