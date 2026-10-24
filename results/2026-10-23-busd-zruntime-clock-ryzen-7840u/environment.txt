@@ -1,0 +1,8 @@
+date: 2026-10-23T22:32:34Z
+kernel: 7.1.13-200.fc44.x86_64
+rustc: rustc 1.99.0 (b940084d7 2026-09-28)
+cargo: cargo 1.99.0 (5f94df478 2026-08-27)
+dbus-bench: d15d922f6e63726d3b829556ecb1b360c937896f
+dbus-broker: dbus-broker 37
+zruntime: 99e2ebd807723177bec5d7c5216e48448c3a91c9
+zruntime-before: 20771cf16b21bc7aa84b3f3ec471b94cf23d7973
