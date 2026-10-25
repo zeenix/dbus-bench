@@ -37,10 +37,9 @@ The workloads, and how the comparisons work, are those of
 [the time limit of 1 s](2026-10-22-busd-send-timeout-xeon-4vcpu.md#the-benchmarks), with 60 rounds
 of each, and 40 of the shared connection, after 3 of warm-up.
 [run.sh](2026-10-22-busd-concurrent-sends-xeon-4vcpu/run.sh) runs them, the raw results of each run
-are in the `.json` files of [the directory](2026-10-22-busd-concurrent-sends-xeon-4vcpu), and the
-comparisons, with the other metrics and the medians, in its
-[stats](2026-10-22-busd-concurrent-sends-xeon-4vcpu/stats). A star marks a difference whose 95%
-interval excludes 0 but not the margin.
+are in [runs.tar.xz](2026-10-22-busd-concurrent-sends-xeon-4vcpu/runs.tar.xz), from which
+[paired-stats.py](../scripts/paired-stats.py) makes the comparisons, with the other metrics and the
+medians. A star marks a difference whose 95% interval excludes 0 but not the margin.
 
 ### concurrent100 against the queue
 

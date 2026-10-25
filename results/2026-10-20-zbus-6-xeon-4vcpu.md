@@ -73,13 +73,15 @@ for round in $(seq 0 15); do
 done
 ```
 
-The runs of all those files are in [runs.json](2026-10-20-zbus-6-xeon-4vcpu/runs.json), each with
-its build and round, round 0's flagged as warmup runs.
+The runs of all those files are in `runs.json`, which
+[runs.tar.xz](2026-10-20-zbus-6-xeon-4vcpu/runs.tar.xz) holds, each with its build and round,
+round 0's flagged as warmup runs.
 [analyze.py](2026-10-20-zbus-6-xeon-4vcpu/analyze.py) makes the tables below from it, with the
 p-values of a Mann–Whitney U test (20,000 permutations):
 
 ```sh
 cd results/2026-10-20-zbus-6-xeon-4vcpu
+tar -xJf runs.tar.xz
 ./analyze.py runs.json zbus-4.3 zbus-6
 ./analyze.py runs.json zbus-6 zbus-6-once zbus-6-borrow
 ```

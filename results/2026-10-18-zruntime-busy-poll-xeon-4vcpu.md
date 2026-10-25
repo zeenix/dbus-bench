@@ -256,17 +256,11 @@ busd runs.
 
 ## Files
 
-* [`run.json`](2026-10-18-zruntime-busy-poll-xeon-4vcpu/run.json): the run under load.
-* [`one-cpu.json`](2026-10-18-zruntime-busy-poll-xeon-4vcpu/one-cpu.json): the run on one CPU.
-* [`light-bus.json`](2026-10-18-zruntime-busy-poll-xeon-4vcpu/light-bus.json),
-  [`light-forward.json`](2026-10-18-zruntime-busy-poll-xeon-4vcpu/light-forward.json): the runs
-  under light load.
-* [`light-forward-limits.json`](2026-10-18-zruntime-busy-poll-xeon-4vcpu/light-forward-limits.json):
-  the quick replies with long gaps.
-* [`light-bus-30.json`](2026-10-18-zruntime-busy-poll-xeon-4vcpu/light-bus-30.json),
-  [`light-bus-50.json`](2026-10-18-zruntime-busy-poll-xeon-4vcpu/light-bus-50.json),
-  [`light-bus-100.json`](2026-10-18-zruntime-busy-poll-xeon-4vcpu/light-bus-100.json): the calls at
-  short intervals.
+* [`runs.tar.xz`](2026-10-18-zruntime-busy-poll-xeon-4vcpu/runs.tar.xz): `run.json`, the run
+  under load; `one-cpu.json`, the run on one CPU; `light-bus.json` and `light-forward.json`,
+  the runs under light load; `light-forward-limits.json`, the quick replies with long gaps;
+  and `light-bus-30.json`, `light-bus-50.json` and `light-bus-100.json`, the calls at short
+  intervals.
 * [`light-client`](2026-10-18-zruntime-busy-poll-xeon-4vcpu/light-client),
   [`measure-light-traffic.py`](2026-10-18-zruntime-busy-poll-xeon-4vcpu/measure-light-traffic.py):
   the light-load tests.

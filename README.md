@@ -20,7 +20,10 @@ fastest brokers, and an unoptimised one is several times slower than any of them
 To compare brokers, `scripts/compare-brokers.py` starts each of them, runs the benchmark against
 them a number of times in turn and reports statistics of the results (see its `--help`).
 `scripts/compare-busd-builds.sh` uses it to compare builds of busd with dbus-daemon and
-dbus-broker. The `results` directory holds comparisons made with them.
+dbus-broker. The `results` directory holds comparisons made with them: a write-up of each, and a
+directory with its raw results, packed into a `runs.tar.xz`, and whatever else it took to make
+them. `scripts/pack-results.sh` packs the raw results of a run of the compare scripts that way, and
+`scripts/paired-stats.py` makes the comparisons in pairs from them again.
 
 ## Results
 
