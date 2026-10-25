@@ -9,8 +9,8 @@
 # * batched: busd that forwards the messages of each peer in batches, of those that are there
 #   already, and writes those of a batch that go to a client in one go, with several small messages
 #   in each system call, through `Connection::send_all` of zbus (z-galaxy/zbus#2078). It is the
-#   commit that BATCHED_REV names, ac6e6fa of the ccr-fd1ce738-0xtuf0 branch of zeenix/busd by
-#   default, which builds on zbus from the branch of the same name of zeenix/zbus;
+#   commit that BATCHED_REV names, ac6e6fa of zeenix/busd by default, an earlier version of
+#   z-galaxy/busd#383, which builds on zbus from the branch of z-galaxy/zbus#2079;
 # * batched-before: the commit that BEFORE_REV names, 4f346a3 by default, which forwards in batches
 #   as batched does, on an earlier commit of that zbus, which ended each write before the message
 #   that would take it past 16 KiB, rather than with it, so that a batch that went past 16 KiB took
