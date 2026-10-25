@@ -79,8 +79,8 @@ way.
 | busd-spin20 | 0.079 (0.075–0.085) | 0.910 (0.883–0.984) | 0.57 | 63% | 99% | 4,564 | 6.31 |
 | dbus-daemon | 0.159 (0.144–0.180) | 1.158 (1.145–1.213) | 1.15 | 99% | 85% | 2,074 | 6.14 |
 
-The raw results are in [`run1.json`](2026-10-18-busd-zruntime-ryzen-7840u/run1.json) and
-[`run2.json`](2026-10-18-busd-zruntime-ryzen-7840u/run2.json).
+The raw results are `run1.json` and `run2.json`, in
+[`runs.tar.xz`](2026-10-18-busd-zruntime-ryzen-7840u/runs.tar.xz).
 
 ## The numbers in the README
 

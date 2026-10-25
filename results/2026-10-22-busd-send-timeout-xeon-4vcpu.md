@@ -83,9 +83,10 @@ the means, in percent, with a bootstrap 95% confidence interval over the pairs, 
 
 The broker's CPU time is that of its process from start to end, from `wait4()`, and its peak memory
 its `VmHWM`. [run-benchmarks.sh](2026-10-22-busd-send-timeout-xeon-4vcpu/run-benchmarks.sh) runs
-them all, the raw results of each run are in the `.json` files of
-[the directory](2026-10-22-busd-send-timeout-xeon-4vcpu), and the comparisons, with the other
-metrics and the medians, in its [stats](2026-10-22-busd-send-timeout-xeon-4vcpu/stats).
+them all, the raw results of each run are in
+[runs.tar.xz](2026-10-22-busd-send-timeout-xeon-4vcpu/runs.tar.xz), from which
+[paired-stats.py](../scripts/paired-stats.py) makes the comparisons, with the other metrics and the
+medians.
 
 ### The time limit against the queue
 

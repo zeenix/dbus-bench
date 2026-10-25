@@ -127,8 +127,8 @@ comes. Neither is something that busd would want to copy.
 
 ## Files
 
-* [`run4.json`](2026-10-18-busd-dbus-daemon-xeon-4vcpu/run4.json),
-  [`run5.json`](2026-10-18-busd-dbus-daemon-xeon-4vcpu/run5.json): the runs above, from
+* [`runs.tar.xz`](2026-10-18-busd-dbus-daemon-xeon-4vcpu/runs.tar.xz): `run4.json` and
+  `run5.json`, the runs above, from
   [`scripts/compare-brokers.py`](../scripts/compare-brokers.py).
 * [`perf`](2026-10-18-busd-dbus-daemon-xeon-4vcpu/perf): the profiles' summaries and the two call
   chains.

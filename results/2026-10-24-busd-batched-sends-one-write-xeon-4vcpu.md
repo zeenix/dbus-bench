@@ -54,12 +54,11 @@ release that its lock file names.
 The workloads, and how the comparisons work, are those of
 [the time limit of 1 s](2026-10-22-busd-send-timeout-xeon-4vcpu.md#the-benchmarks), with 60 rounds
 of each, and 40 of the shared connection, after 3 of warm-up, all six brokers in each round. The raw
-results of each run are in the `.json` files of
-[the directory](2026-10-24-busd-batched-sends-one-write-xeon-4vcpu), and the comparisons, with the
-other metrics and the medians, in its
-[stats](2026-10-24-busd-batched-sends-one-write-xeon-4vcpu/stats). A star marks a difference whose
-95% interval excludes 0 but not the margin. The whole fan-out is how long the delivery of all the
-signals to 20 subscribers takes.
+results of each run are in
+[runs.tar.xz](2026-10-24-busd-batched-sends-one-write-xeon-4vcpu/runs.tar.xz), from which
+[paired-stats.py](../scripts/paired-stats.py) makes the comparisons, with the other metrics and the
+medians. A star marks a difference whose 95% interval excludes 0 but not the margin. The whole
+fan-out is how long the delivery of all the signals to 20 subscribers takes.
 
 ### batched against batched-before
 
@@ -236,6 +235,6 @@ The client's and the broker's waits are their voluntary context switches, over b
 scripts/compare-batched-sends.sh
 ```
 
-at 18444f8 builds the brokers and runs all of this, in about 67 minutes on this VM once the
-builds are made, and writes these files to `$WORK/batched-sends-results-ac6e6fa`, with the
-comparisons in pairs next to the others rather than in `stats`.
+at 18444f8 builds the brokers and runs all of this, in about 67 minutes on this VM once the builds
+are made, and writes its results to `$WORK/batched-sends-results-ac6e6fa`, whose raw runs
+[pack-results.sh](../scripts/pack-results.sh) packs into a `runs.tar.xz`.

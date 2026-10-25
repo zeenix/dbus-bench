@@ -47,11 +47,10 @@ client in one go, with `Connection::send_all` of zbus, all three on zruntime 99e
 The workloads, and how the comparisons work, are those of
 [the time limit of 1 s](2026-10-22-busd-send-timeout-xeon-4vcpu.md#the-benchmarks), with 60 rounds
 of each, and 40 of the shared connection, after 3 of warm-up, all five brokers in each round. The
-raw results of each run are in the `.json` files of
-[the directory](2026-10-24-busd-batched-sends-ryzen-7840u), and the comparisons, with the other
-metrics and the medians, in its [stats](2026-10-24-busd-batched-sends-ryzen-7840u/stats). A star
-marks a difference whose 95% interval excludes 0 but not the margin. The whole fan-out is how long
-the delivery of all the signals to 20 subscribers takes.
+raw results of each run are in [runs.tar.xz](2026-10-24-busd-batched-sends-ryzen-7840u/runs.tar.xz),
+from which [paired-stats.py](../scripts/paired-stats.py) makes the comparisons, with the other
+metrics and the medians. A star marks a difference whose 95% interval excludes 0 but not the margin.
+The whole fan-out is how long the delivery of all the signals to 20 subscribers takes.
 
 ### batched against baseline
 
@@ -210,5 +209,5 @@ scripts/compare-batched-sends.sh
 ```
 
 at 541d4c1 builds the brokers and runs all of this, in about 39 minutes on this laptop once the
-builds are made, and writes these files to `$WORK/batched-sends-results-4f346a3`, with the
-comparisons in pairs next to the others rather than in `stats`.
+builds are made, and writes its results to `$WORK/batched-sends-results-4f346a3`, whose raw runs
+[pack-results.sh](../scripts/pack-results.sh) packs into a `runs.tar.xz`.

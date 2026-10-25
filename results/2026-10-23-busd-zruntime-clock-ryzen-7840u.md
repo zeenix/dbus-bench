@@ -49,10 +49,10 @@ time limit of zruntime's, so one build of it does for both.
 The workloads, and how the comparisons work, are those of
 [the time limit of 1 s](2026-10-22-busd-send-timeout-xeon-4vcpu.md#the-benchmarks), with 60 rounds
 of each, and 40 of the shared connection, after 3 of warm-up, all five brokers in each round. The
-raw results of each run are in the `.json` files of
-[the directory](2026-10-23-busd-zruntime-clock-ryzen-7840u), and the comparisons, with the other
-metrics and the medians, in its [stats](2026-10-23-busd-zruntime-clock-ryzen-7840u/stats). A star
-marks a difference whose 95% interval excludes 0 but not the margin.
+raw results of each run are in
+[runs.tar.xz](2026-10-23-busd-zruntime-clock-ryzen-7840u/runs.tar.xz), from which
+[paired-stats.py](../scripts/paired-stats.py) makes the comparisons, with the other metrics and the
+medians. A star marks a difference whose 95% interval excludes 0 but not the margin.
 
 ### The commit of zruntime
 
@@ -187,7 +187,7 @@ TIMEOUT_REV=7f3ba5a7b8289a390a01245c8b19b1f3f5d4ad6c \
 ```
 
 builds the brokers and runs all of this, in about 39 minutes on this laptop once the builds are
-made, and writes these files to `$WORK/send-timeout-results-7f3ba5a-zruntime-99e2ebd`, with the
-comparisons in pairs next to the others rather than in `stats`. busd's commits are those that the
-`ccr-314882eb-9cvuxt` branch of zeenix/busd had then: the branch was rebased onto busd's main since,
-so the script fetches them by their full hashes, as it does since 01af52e.
+made, and writes its results to `$WORK/send-timeout-results-7f3ba5a-zruntime-99e2ebd`, whose raw
+runs [pack-results.sh](../scripts/pack-results.sh) packs into a `runs.tar.xz`. busd's commits are
+those that the `ccr-314882eb-9cvuxt` branch of zeenix/busd had then: the branch was rebased onto
+busd's main since, so the script fetches them by their full hashes, as it does since 01af52e.

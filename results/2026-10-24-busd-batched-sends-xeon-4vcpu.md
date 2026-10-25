@@ -62,11 +62,10 @@ release that its lock file names.
 The workloads, and how the comparisons work, are those of
 [the time limit of 1 s](2026-10-22-busd-send-timeout-xeon-4vcpu.md#the-benchmarks), with 60 rounds
 of each, and 40 of the shared connection, after 3 of warm-up, all five brokers in each round. The
-raw results of each run are in the `.json` files of
-[the directory](2026-10-24-busd-batched-sends-xeon-4vcpu), and the comparisons, with the other
-metrics and the medians, in its [stats](2026-10-24-busd-batched-sends-xeon-4vcpu/stats). A star
-marks a difference whose 95% interval excludes 0 but not the margin. The whole fan-out is how long
-the delivery of all the signals to 20 subscribers takes.
+raw results of each run are in [runs.tar.xz](2026-10-24-busd-batched-sends-xeon-4vcpu/runs.tar.xz),
+from which [paired-stats.py](../scripts/paired-stats.py) makes the comparisons, with the other
+metrics and the medians. A star marks a difference whose 95% interval excludes 0 but not the margin.
+The whole fan-out is how long the delivery of all the signals to 20 subscribers takes.
 
 ### batched against baseline
 
@@ -223,16 +222,16 @@ from the environment, in two runs, each against baseline:
 | any | up to 64 KiB | 5.85 s | 3.64 to 8.56 s | 3.76 s | 5.18 s |
 | any | up to 16 KiB | 3.82 s | 3.24 to 4.10 s | 2.36 s | 3.53 s |
 
-The CPU times are those of the phase, and the runs are in
-[bounds](2026-10-24-busd-batched-sends-xeon-4vcpu/bounds), with `$WORK/bin/busd-bounds` for that
-build, which no branch has. Of what writes of any size add to the broker's CPU time, 1.07 of 1.23 s
-is system time, over both phases, and the client spends more time in the kernel as well: in eight
-runs of the start and the phase with each bound of the writes, one after the other, on that build
-with batches of up to 64 KiB, the slowest with writes of any size took 5.3 s, with 2.32 s of system
-time of the client and 2.24 s of busd, where with writes of up to 16 KiB, the client had 1.13 to
-1.45 s of it and busd 0.91 to 1.17 s. Writes of several messages of 16 KiB had both ends work harder
-for the same bytes, in some runs and not in others, while writes with one such message did not. zbus
-bounds each write at 16 KiB, which still takes a dozen or more small messages at a time.
+The CPU times are those of the phase, and the runs are in the `bounds` directory of
+[runs.tar.xz](2026-10-24-busd-batched-sends-xeon-4vcpu/runs.tar.xz), with `$WORK/bin/busd-bounds`
+for that build, which no branch has. Of what writes of any size add to the broker's CPU time, 1.07
+of 1.23 s is system time, over both phases, and the client spends more time in the kernel as well:
+in eight runs of the start and the phase with each bound of the writes, one after the other, on that
+build with batches of up to 64 KiB, the slowest with writes of any size took 5.3 s, with 2.32 s of
+system time of the client and 2.24 s of busd, where with writes of up to 16 KiB, the client had 1.13
+to 1.45 s of it and busd 0.91 to 1.17 s. Writes of several messages of 16 KiB had both ends work
+harder for the same bytes, in some runs and not in others, while writes with one such message did
+not. zbus bounds each write at 16 KiB, which still takes a dozen or more small messages at a time.
 
 A batch of busd ends with the message that brings it to 16 KiB or more, while a write of zbus
 stops short of it, so a batch that ends on its bytes takes two writes to a recipient that gets all
@@ -265,5 +264,5 @@ scripts/compare-batched-sends.sh
 ```
 
 builds the brokers and runs all of this, in about 58 minutes on this VM once the builds are made,
-and writes these files to `$WORK/batched-sends-results-4f346a3`, with the comparisons in pairs next
-to the others rather than in `stats`.
+and writes its results to `$WORK/batched-sends-results-4f346a3`, whose raw runs
+[pack-results.sh](../scripts/pack-results.sh) packs into a `runs.tar.xz`.
