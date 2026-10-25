@@ -13,8 +13,11 @@
 //!
 //! Every signal carries its sequence number and `PAYLOAD_LEN` bytes of payload. A subscriber
 //! checks that the numbers arrive as 0, 1, 2 and so on, so the run fails if the broker loses,
-//! repeats or reorders a signal, and so it does if a D-Bus call fails. Like `main.rs`, it runs
-//! on a single-threaded runtime: the emitter and the subscribers take turns on one thread.
+//! repeats or reorders a signal, and so it does if a D-Bus call fails. Each subscriber runs on a
+//! thread of its own, with a single-threaded runtime of its own, as a process of its own would: it
+//! takes each signal off its socket as soon as the broker has written it there, rather than when
+//! one thread for all of them gets round to it, and the emitter has the main thread to itself, so
+//! that how long a phase takes is how fast the broker gets the signals through.
 //!
 //! What a phase times is from just before the first signal is sent until the last subscriber has
 //! received its last one. The connections are made and subscribed before that.
@@ -22,32 +25,28 @@
 use std::{
     num::NonZeroUsize,
     sync::mpsc,
+    thread::JoinHandle,
     time::{Duration, Instant},
 };
 
-use futures_util::{
-    future::{try_join, try_join_all},
-    TryStreamExt,
-};
+use futures_util::TryStreamExt;
 use serde_bytes::Bytes;
 use zbus::{message::Type, Connection, MatchRule, MessageStream};
 
 /// How many signals the burst sends.
 ///
 /// A phase should take between 0.2 and 1.5 s: long enough to time to a fraction of a percent,
-/// short enough to repeat many times. On a 4-vCPU Xeon VM, the burst takes about 0.5 s against
-/// busd and against dbus-daemon, in the middle of that. The client alone is busy for about 0.45 s
-/// of it, which is the least that any broker can take, so half as many signals would leave the
-/// fastest of them close to 0.2 s.
+/// short enough to repeat many times. On a 4-vCPU Xeon VM, the burst takes about 0.35 s against
+/// busd, 0.27 s against dbus-broker and 0.68 s against dbus-daemon, so half as many signals would
+/// leave the fastest of them close to 0.14 s.
 const BURST_SIGNALS: usize = 40_000;
 
 /// How many signals the fan-out sends, each of which is delivered to every subscriber.
 ///
-/// That is `SUBSCRIBERS` times as many deliveries, 80000 of them, but a tenth of the signals sent,
-/// which takes about as long as the burst: 0.5 s against busd and 0.7 s against dbus-daemon, on
-/// the VM above. The client is busy for 0.45 s of it again, so fewer signals would bring the
-/// fastest brokers close to 0.2 s here too.
-const FANOUT_SIGNALS: usize = 4_000;
+/// That is `SUBSCRIBERS` times as many deliveries, 120000 of them, but 15% of the signals that the
+/// burst sends, which takes 0.27 to 0.34 s against the fastest brokers, and 1.0 to 1.2 s against
+/// the slowest, on the VM above, so fewer signals would bring the fastest close to 0.2 s.
+const FANOUT_SIGNALS: usize = 6_000;
 
 /// How many subscribers the fan-out has, as many as the simultaneous clients of `main.rs`.
 const SUBSCRIBERS: usize = 20;
@@ -75,8 +74,9 @@ const PATH: &str = "/org/dbus2/benchmark";
 /// The interface of the signals.
 const INTERFACE: &str = "org.dbus2.benchmark.Fanout";
 
-/// Anything that goes wrong ends the run, so the errors need no more than their message.
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+/// Anything that goes wrong ends the run, so the errors need no more than their message. They are
+/// `Send`, so that the thread of a subscriber can hand its error over.
+type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
@@ -106,8 +106,8 @@ struct Phase {
     /// The connection that sends the signals. It stays open until the phase is over, so that the
     /// broker never sees the sender go while signals from it are still on their way.
     emitter: Connection,
-    /// The streams of the subscribers, each of which keeps the connection it reads open.
-    subscribers: Vec<MessageStream>,
+    /// The threads of the subscribers, each of which returns when it took its last signal.
+    subscribers: Vec<JoinHandle<Result<Instant>>>,
     /// Ends the process if the phase takes too long, unless it is over by then and drops this.
     _watchdog: Watchdog,
 }
@@ -130,9 +130,22 @@ impl Phase {
         let queue = NonZeroUsize::new(signals + QUEUE_SPARE).expect("room for the spare signals");
 
         let emitter = zbus::connection::Builder::session().build().await?;
+        let (subscribed, subscriptions) = mpsc::channel();
+        let subscribers: Vec<_> = (0..subscribers)
+            .map(|_| {
+                let rule = rule.clone();
+                let subscribed = subscribed.clone();
+                std::thread::spawn(move || subscriber(rule, queue, signals, subscribed))
+            })
+            .collect();
+        drop(subscribed);
         // Each subscribes before any signal is sent: the bus has registered the match rule by the
         // time that `for_match_rule` returns, as it waits for the bus to reply to `AddMatch`.
-        let subscribers = try_join_all((0..subscribers).map(|_| subscribe(&rule, queue))).await?;
+        for _ in 0..subscribers.len() {
+            subscriptions
+                .recv()
+                .map_err(|_| "a subscriber ended before it subscribed")??;
+        }
 
         Ok(Self {
             member,
@@ -144,24 +157,53 @@ impl Phase {
     }
 
     /// Sends the signals while the subscribers receive them, and returns how long that took.
-    async fn run(mut self, data: &[u8]) -> Result<Duration> {
-        let signals = self.signals;
-
+    async fn run(self, data: &[u8]) -> Result<Duration> {
         let before = Instant::now();
-        // The subscribers read while the emitter sends, and either failing ends the phase at
-        // once, rather than leaving the other to wait for what will not come.
-        try_join(
-            emit(&self.emitter, self.member, signals, data),
-            try_join_all(
-                self.subscribers
-                    .iter_mut()
-                    .map(|stream| receive(stream, signals)),
-            ),
-        )
-        .await?;
+        emit(&self.emitter, self.member, self.signals, data).await?;
+        let mut last = before;
+        for subscriber in self.subscribers {
+            let done = subscriber.join().map_err(|_| "a subscriber panicked")??;
+            last = last.max(done);
+        }
 
-        Ok(before.elapsed())
+        Ok(last.duration_since(before))
     }
+}
+
+/// A subscriber, on a thread of its own, with a single-threaded runtime of its own: subscribes to
+/// the signals that `rule` matches, says on `subscribed` whether it did, and receives `count`
+/// signals.
+///
+/// Returns when it took the last of them off its stream.
+fn subscriber(
+    rule: MatchRule<'static>,
+    queue: NonZeroUsize,
+    count: usize,
+    subscribed: mpsc::Sender<Result<()>>,
+) -> Result<Instant> {
+    let subscription = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(Into::into)
+        .and_then(|runtime| {
+            let stream = runtime.block_on(subscribe(&rule, queue))?;
+
+            Ok((runtime, stream))
+        });
+    let (runtime, mut stream) = match subscription {
+        Ok(subscription) => subscription,
+        Err(e) => {
+            // The thread that waits for the subscribers gives up on the first that fails, with
+            // its error.
+            let _ = subscribed.send(Err(e));
+
+            return Err("the subscriber could not subscribe".into());
+        }
+    };
+    let _ = subscribed.send(Ok(()));
+    runtime.block_on(receive(&mut stream, count))?;
+
+    Ok(Instant::now())
 }
 
 /// Connects a subscriber, and subscribes it to the signals that `rule` matches.
