@@ -28,32 +28,49 @@ them. `scripts/pack-results.sh` packs the raw results of a run of the compare sc
 ## Results
 
 Here are the results obtained on my machine (AMD Ryzen 7 7840U w/ 8 cores & 16 threads, 64 GB RAM,
-Fedora 44), as the medians of 15 rounds of `scripts/compare-busd-builds.sh`, each of which runs the
-benchmark once against every broker:
+Fedora 44), as the medians of 60 rounds of `scripts/compare-batched-sends.sh` on 2026-10-25, each of
+which runs the benchmarks once against every broker.
 
-| Broker        |      Version      | 1 connection | 20 connections | CPU time with 20 connections |
-|---------------|-------------------|-------------:|---------------:|-----------------------------:|
-| [dbus-broker] | 37                |      0.062 s |        0.451 s |                       0.31 s |
-| [dbus-daemon] | 1.16.2            |      0.142 s |        1.195 s |                       1.17 s |
-| [busd]        | 0.5.0<sup>1</sup> |      0.075 s |        0.468 s |                       0.80 s |
-| [busd]        | 0.5.0<sup>2</sup> |      0.070 s |        0.475 s |                       0.37 s |
+Method calls, from the benchmark above: 1000 calls with 16 KiB of data each, through one connection,
+then through 20 connections at once:
 
-With 20 connections, the client keeps its own CPU busy, 95 to 97% of the time, with every broker but
-dbus-daemon, so their timings there are within 6% of each other, and the CPU time of the broker is
-what tells them apart. [The results](results/2026-10-20-zbus-6-ryzen-7840u.md) have more on these,
-and on how they were measured. The results this table had before, from 2026-10-18, were measured
-with the benchmark on zbus 4.3, whose client was so much slower that every broker but dbus-daemon
-took about 0.92 s with 20 connections, twice as long as now. Those it had before that, from 2024,
+| Broker        | Version          | 1 connection | 20 connections | CPU time with 20 connections | Peak memory |
+|---------------|------------------|-------------:|---------------:|-----------------------------:|------------:|
+| [dbus-broker] | 37               |      0.060 s |        0.427 s |                       0.28 s |     8.0 MiB |
+| [dbus-daemon] | 1.16.2           |      0.134 s |        1.143 s |                       1.12 s |     6.1 MiB |
+| [busd]        | main<sup>1</sup> |      0.071 s |        0.443 s |                       0.35 s |     6.6 MiB |
+
+Signals, from `cargo run --release --bin fanout`: a burst of 40,000 signals with 1 KiB of data each
+to one subscriber, then a broadcast of 6000 of them to each of 20 subscribers:
+
+| Broker        | Version          | Burst to 1 | Broadcast to 20 | CPU time of the broadcast | Peak memory |
+|---------------|------------------|-----------:|----------------:|--------------------------:|------------:|
+| [dbus-broker] | 37               |    0.188 s |         0.219 s |                    0.19 s |    14.6 MiB |
+| [dbus-daemon] | 1.16.2           |    0.847 s |         2.006 s |                    1.98 s |     5.5 MiB |
+| [busd]        | main<sup>1</sup> |    0.216 s |         0.138 s |                    0.11 s |     6.2 MiB |
+
+With 20 connections, the client of the method calls keeps its own CPU busy, 96% of the time, with
+busd and dbus-broker, so the CPU time of the broker is what tells those two apart there. busd
+broadcasts the signals 37% faster than dbus-broker, with about 40% less CPU time, as it writes
+several of them to a subscriber with each system call. The memory of dbus-broker is that of its two
+processes, its launcher and the broker proper, together.
+[The results](results/2026-10-25-busd-batched-sends-subscriber-threads-ryzen-7840u.md) have more on
+these, the latencies and the connection that 100 proxies share among them, and on how they were
+measured.
+
+The results that the table of method calls had before, from 2026-10-20, are in
+[results/2026-10-20-zbus-6-ryzen-7840u.md](results/2026-10-20-zbus-6-ryzen-7840u.md). Those from
+2026-10-18 were measured with the benchmark on zbus 4.3, whose client was so much slower that every
+broker but dbus-daemon took about 0.92 s with 20 connections, twice as long as now. Those from 2024
 were likely made with an unoptimised build of the benchmark, as `cargo run` makes, which would have
 held every broker to about the same timings.
 
 **Note**: If you run the benchmark on your machine, make sure that `busd` is built in release mode
 (`cargo run --release` if you build+run it yourself from the source).
 
-1: Actually, the last commit of the git main branch on Tokio (840d728).
-
-2: Actually, the git main branch (commit a982812), on zruntime. It was measured from the commit that
-ported busd to zruntime (0d22862), which builds the same code.
+1: Actually, the git main branch as of z-galaxy/busd#383 (fe38f44), which forwards the messages of
+each peer in batches. It was measured from ac6e6fa, an earlier version of it, whose code is the same
+but for comments.
 
 [dbus-broker]: https://github.com/bus1/dbus-broker
 [dbus-daemon]: https://gitlab.freedesktop.org/dbus/dbus
