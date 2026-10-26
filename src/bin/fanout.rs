@@ -78,22 +78,23 @@ const INTERFACE: &str = "org.dbus2.benchmark.Fanout";
 /// `Send`, so that the thread of a subscriber can hand its error over.
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
-#[tokio::main(flavor = "current_thread")]
-async fn main() -> Result<()> {
-    let data = vec![0u8; PAYLOAD_LEN];
+fn main() -> Result<()> {
+    zbus::block_on(async {
+        let data = vec![0u8; PAYLOAD_LEN];
 
-    let burst = Phase::connect("burst", "Burst", 1, BURST_SIGNALS).await?;
-    let elapsed = burst.run(&data).await?;
-    // The fan-out is connected before the line below is printed, and not after, because
-    // `scripts/compare-brokers.py` measures what the broker and the client use between the two
-    // lines. This keeps the connecting of the fan-out out of it.
-    let fanout = Phase::connect("fan-out", "Fanout", SUBSCRIBERS, FANOUT_SIGNALS).await?;
-    println!("Hammering using a single client took {elapsed:?}");
+        let burst = Phase::connect("burst", "Burst", 1, BURST_SIGNALS).await?;
+        let elapsed = burst.run(&data).await?;
+        // The fan-out is connected before the line below is printed, and not after, because
+        // `scripts/compare-brokers.py` measures what the broker and the client use between the two
+        // lines. This keeps the connecting of the fan-out out of it.
+        let fanout = Phase::connect("fan-out", "Fanout", SUBSCRIBERS, FANOUT_SIGNALS).await?;
+        println!("Hammering using a single client took {elapsed:?}");
 
-    let elapsed = fanout.run(&data).await?;
-    println!("Hammering using {SUBSCRIBERS} simultaneous clients took {elapsed:?}");
+        let elapsed = fanout.run(&data).await?;
+        println!("Hammering using {SUBSCRIBERS} simultaneous clients took {elapsed:?}");
 
-    Ok(())
+        Ok(())
+    })
 }
 
 /// A phase of the benchmark, connected and subscribed: an emitter and the subscribers that
@@ -181,29 +182,22 @@ fn subscriber(
     count: usize,
     subscribed: mpsc::Sender<Result<()>>,
 ) -> Result<Instant> {
-    let subscription = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .map_err(Into::into)
-        .and_then(|runtime| {
-            let stream = runtime.block_on(subscribe(&rule, queue))?;
+    zbus::block_on(async {
+        let mut stream = match subscribe(&rule, queue).await {
+            Ok(stream) => stream,
+            Err(e) => {
+                // The thread that waits for the subscribers gives up on the first that fails, with
+                // its error.
+                let _ = subscribed.send(Err(e));
 
-            Ok((runtime, stream))
-        });
-    let (runtime, mut stream) = match subscription {
-        Ok(subscription) => subscription,
-        Err(e) => {
-            // The thread that waits for the subscribers gives up on the first that fails, with
-            // its error.
-            let _ = subscribed.send(Err(e));
+                return Err("the subscriber could not subscribe".into());
+            }
+        };
+        let _ = subscribed.send(Ok(()));
+        receive(&mut stream, count).await?;
 
-            return Err("the subscriber could not subscribe".into());
-        }
-    };
-    let _ = subscribed.send(Ok(()));
-    runtime.block_on(receive(&mut stream, count))?;
-
-    Ok(Instant::now())
+        Ok(Instant::now())
+    })
 }
 
 /// Connects a subscriber, and subscribes it to the signals that `rule` matches.
@@ -250,9 +244,9 @@ async fn receive(stream: &mut MessageStream, count: usize) -> Result<()> {
 
 /// Ends the process, with `TIMEOUT_EXIT_STATUS`, if it is not dropped within `PHASE_TIMEOUT`.
 ///
-/// A broker that loses a signal leaves a subscriber waiting for it for good. Only the `rt` and
-/// `macros` features of Tokio are on, so there is no timer to give up with, but a thread of its
-/// own can.
+/// A broker that loses a signal leaves a subscriber waiting for it for good, and the main thread
+/// waiting for the subscriber's thread to end. No timer of a runtime could cut that wait short, as
+/// it blocks the thread, but a thread of its own can.
 struct Watchdog {
     /// Dropping this is what calls the watchdog off.
     _disarm: mpsc::Sender<()>,

@@ -21,21 +21,22 @@ impl Service {
 #[derive(Deserialize, Serialize, zbus::wire::Type)]
 struct ByteArray<'a>(#[serde(borrow)] &'a Bytes);
 
-#[tokio::main(flavor = "current_thread")]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let data = vec![0u8; 16 * 1024];
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    zbus::block_on(async {
+        let data = vec![0u8; 16 * 1024];
 
-    let before = std::time::Instant::now();
-    hammer("org.dbus2.benchmark.SingleClient".to_string(), &data).await?;
-    let elapsed = before.elapsed();
-    println!("Hammering using a single client took {:?}", elapsed);
+        let before = std::time::Instant::now();
+        hammer("org.dbus2.benchmark.SingleClient".to_string(), &data).await?;
+        let elapsed = before.elapsed();
+        println!("Hammering using a single client took {:?}", elapsed);
 
-    let before = std::time::Instant::now();
-    hammer_multi("org.dbus2.benchmark.MultiClient".to_string(), &data).await?;
-    let elapsed = before.elapsed();
-    println!("Hammering using 20 simultaneous clients took {:?}", elapsed);
+        let before = std::time::Instant::now();
+        hammer_multi("org.dbus2.benchmark.MultiClient".to_string(), &data).await?;
+        let elapsed = before.elapsed();
+        println!("Hammering using 20 simultaneous clients took {:?}", elapsed);
 
-    Ok(())
+        Ok(())
+    })
 }
 
 async fn hammer(name: String, data: &[u8]) -> zbus::Result<()> {

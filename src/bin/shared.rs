@@ -20,36 +20,37 @@ impl Service {
 #[derive(Deserialize, Serialize, zbus::wire::Type)]
 struct ByteArray<'a>(#[serde(borrow)] &'a Bytes);
 
-#[tokio::main(flavor = "current_thread")]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let clients: usize = std::env::var("DBUS_BENCH_CLIENTS")
-        .ok()
-        .and_then(|n| n.parse().ok())
-        .unwrap_or(100);
-    let data = vec![0u8; 16 * 1024];
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    zbus::block_on(async {
+        let clients: usize = std::env::var("DBUS_BENCH_CLIENTS")
+            .ok()
+            .and_then(|n| n.parse().ok())
+            .unwrap_or(100);
+        let data = vec![0u8; 16 * 1024];
 
-    // A single client connection, which serves the object, shared by `clients` proxies.
-    let conn = serving().await?;
-    let before = std::time::Instant::now();
-    futures_util::future::try_join_all((0..clients).map(|_| hammer(&conn, &data))).await?;
-    println!(
-        "Hammering using a single client took {:?}",
-        before.elapsed()
-    );
-
-    // `clients` connections, each serving the object and calling it.
-    let before = std::time::Instant::now();
-    futures_util::future::try_join_all((0..clients).map(|_| async {
+        // A single client connection, which serves the object, shared by `clients` proxies.
         let conn = serving().await?;
-        hammer(&conn, &data).await
-    }))
-    .await?;
-    println!(
-        "Hammering using {clients} simultaneous clients took {:?}",
-        before.elapsed()
-    );
+        let before = std::time::Instant::now();
+        futures_util::future::try_join_all((0..clients).map(|_| hammer(&conn, &data))).await?;
+        println!(
+            "Hammering using a single client took {:?}",
+            before.elapsed()
+        );
 
-    Ok(())
+        // `clients` connections, each serving the object and calling it.
+        let before = std::time::Instant::now();
+        futures_util::future::try_join_all((0..clients).map(|_| async {
+            let conn = serving().await?;
+            hammer(&conn, &data).await
+        }))
+        .await?;
+        println!(
+            "Hammering using {clients} simultaneous clients took {:?}",
+            before.elapsed()
+        );
+
+        Ok(())
+    })
 }
 
 async fn serving() -> zbus::Result<zbus::Connection> {

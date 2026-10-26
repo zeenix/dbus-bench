@@ -112,20 +112,21 @@ impl Service {
 #[derive(Deserialize, Serialize, zbus::wire::Type)]
 struct ByteArray<'a>(#[serde(borrow)] &'a Bytes);
 
-#[tokio::main(flavor = "current_thread")]
-async fn main() -> Result<()> {
-    let single_rtt = single_rtt().await?;
-    let multi_rtt = multi_rtt().await?;
-    let fanout_delivery = fanout_delivery().await?;
+fn main() -> Result<()> {
+    zbus::block_on(async {
+        let single_rtt = single_rtt().await?;
+        let multi_rtt = multi_rtt().await?;
+        let fanout_delivery = fanout_delivery().await?;
 
-    println!(
-        "{{\"single_rtt\": {}, \"multi_rtt\": {}, \"fanout_delivery\": {}}}",
-        single_rtt.to_json(),
-        multi_rtt.to_json(),
-        fanout_delivery.to_json(),
-    );
+        println!(
+            "{{\"single_rtt\": {}, \"multi_rtt\": {}, \"fanout_delivery\": {}}}",
+            single_rtt.to_json(),
+            multi_rtt.to_json(),
+            fanout_delivery.to_json(),
+        );
 
-    Ok(())
+        Ok(())
+    })
 }
 
 /// The scenario `single_rtt`: calls from one service to itself, one after the other.
@@ -213,28 +214,21 @@ fn subscriber(
     queue: NonZeroUsize,
     subscribed: mpsc::Sender<Result<()>>,
 ) -> Result<Vec<(u64, Instant)>> {
-    let subscription = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .map_err(Into::into)
-        .and_then(|runtime| {
-            let stream = runtime.block_on(subscribe(&rule, queue))?;
+    zbus::block_on(async {
+        let mut stream = match subscribe(&rule, queue).await {
+            Ok(stream) => stream,
+            Err(e) => {
+                // The thread that waits for the subscribers gives up on the first that fails, with
+                // its error.
+                let _ = subscribed.send(Err(e));
 
-            Ok((runtime, stream))
-        });
-    let (runtime, mut stream) = match subscription {
-        Ok(subscription) => subscription,
-        Err(e) => {
-            // The thread that waits for the subscribers gives up on the first that fails, with
-            // its error.
-            let _ = subscribed.send(Err(e));
+                return Err("the subscriber could not subscribe".into());
+            }
+        };
+        let _ = subscribed.send(Ok(()));
 
-            return Err("the subscriber could not subscribe".into());
-        }
-    };
-    let _ = subscribed.send(Ok(()));
-
-    runtime.block_on(receive(&mut stream))
+        receive(&mut stream).await
+    })
 }
 
 /// A service that is at a well-known name of its own, and a proxy to it on its connection, so
@@ -406,9 +400,10 @@ fn percentile(sorted: &[u64], permille: usize) -> u64 {
 
 /// Ends the process, with `TIMEOUT_EXIT_STATUS`, if it is not dropped within `SCENARIO_TIMEOUT`.
 ///
-/// A broker that loses a message leaves a client waiting for it for good. Only the `rt` and
-/// `macros` features of Tokio are on, so there is no timer to give up with, but a thread of its
-/// own can. It says so on the standard error, as the standard output is for the object only.
+/// A broker that loses a message leaves a client waiting for it for good. The wait can be one that
+/// blocks a thread, such as that for the thread of a subscriber to end, which no timer of a
+/// runtime could cut short, but a thread of its own can. It says so on the standard error, as the
+/// standard output is for the object only.
 struct Watchdog {
     /// Dropping this is what calls the watchdog off.
     _disarm: mpsc::Sender<()>,
