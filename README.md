@@ -1,8 +1,9 @@
 # D-Bus Broker Benchmarking
 
-This repository attempts to benchmark the performance of D-Bus brokers. It make simple method calls
-to its own service, using a single and multiple simultaneous service & client pairs. Each pair share
-the same connection.
+This repository attempts to benchmark the performance of D-Bus brokers. It makes simple method calls
+to its own services, using a single and multiple simultaneous service & client pairs. The service
+and the client of each pair have a connection and a thread of their own, as processes of their own
+would, so that neither holds the other up.
 
 ## Running the benchmark
 
@@ -31,8 +32,9 @@ Here are the results obtained on my machine (AMD Ryzen 7 7840U w/ 8 cores & 16 t
 Fedora 44), as the medians of 60 rounds of `scripts/compare-batched-sends.sh` on 2026-10-25, each of
 which runs the benchmarks once against every broker.
 
-Method calls, from the benchmark above: 1000 calls with 16 KiB of data each, through one connection,
-then through 20 connections at once:
+Method calls, from the benchmark above as it was before the service and the client of each pair
+had a connection and a thread of their own: 1000 calls with 16 KiB of data each, through one
+connection that both shared, then through 20 such connections at once, all on one thread:
 
 | Broker        | Version          | 1 connection | 20 connections | CPU time with 20 connections | Peak memory |
 |---------------|------------------|-------------:|---------------:|-----------------------------:|------------:|
