@@ -22,7 +22,7 @@
 #
 # It runs the paired comparisons of results/2026-10-23-busd-zruntime-clock-ryzen-7840u.md between
 # them: method calls, signals and latencies, with the clients on zbus 6, and the connection that 100
-# proxies share, then 100 connections, each of which serves the object that it calls. Every round
+# proxies share to call one service, then 100 services, each with a client of its own. Every round
 # runs each broker once, in an order shuffled for each round, after WARMUP rounds that the tables
 # leave out. It writes the tables (.md), the runs (.json) and the comparisons in pairs (.stats.md
 # and .stats.json): batched against baseline, queue and batched-before, baseline against queue, and
@@ -246,7 +246,7 @@ echo "== latencies: $rounds rounds" >&2
 python3 scripts/compare-latency.py --bench "$bin/latency" --rounds "$rounds" \
     --warmup "$warmup" --seed 33 --out "$out/latency.json" "${meta[@]}" "${brokers[@]}" \
     > "$out/latency.md" || failed+=(latency)
-echo "== 100 proxies sharing a connection, then 100 connections (zbus 6):" \
+echo "== 100 proxies sharing a connection, then 100 clients (zbus 6):" \
     "$shared_rounds rounds" >&2
 DBUS_BENCH_CLIENTS=100 python3 scripts/compare-brokers.py --bench "$bin/shared" \
     --rounds "$shared_rounds" --warmup "$warmup" --seed 34 --out "$out/shared.json" \

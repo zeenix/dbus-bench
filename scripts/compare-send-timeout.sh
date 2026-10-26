@@ -235,7 +235,7 @@ compare_zruntime() {
     python3 scripts/compare-latency.py --bench "$bin/latency" --rounds "$rounds" \
         --warmup "$warmup" --seed 13 --out "$out/latency.json" "${meta[@]}" "${brokers[@]}" \
         > "$out/latency.md" || return
-    echo "== 100 proxies sharing a connection, then 100 connections (zbus 6):" \
+    echo "== 100 proxies sharing a connection, then 100 clients (zbus 6):" \
         "$shared_rounds rounds" >&2
     DBUS_BENCH_CLIENTS=100 python3 scripts/compare-brokers.py --bench "$bin/shared" \
         --rounds "$shared_rounds" --warmup "$warmup" --seed 14 --out "$out/shared.json" \
