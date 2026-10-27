@@ -1,0 +1,9 @@
+date: 2026-10-27T20:25:23Z
+kernel: 6.18.44-fc-v165
+cpu: Intel(R) Xeon(R) Processor @ 2.10GHz x 4
+rustc: rustc 1.97.0 (2d8144b78 2026-07-07)
+cargo: cargo 1.97.0 (c980f4866 2026-06-30)
+dbus-bench: bc40cf0385a103132bd5df59ededb91deca5c3bd
+clients: zbus 50c54bfdc2b1fbb66d555d41a0cfb3063c014566, zruntime b3bd01d8fc1827c690d2525a157694afd030ea4b
+dbus-broker: dbus-broker 37
+dbus-daemon: D-Bus Message Bus Daemon 1.14.10
