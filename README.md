@@ -29,50 +29,55 @@ them. `scripts/pack-results.sh` packs the raw results of a run of the compare sc
 ## Results
 
 Here are the results obtained on my machine (AMD Ryzen 7 7840U w/ 8 cores & 16 threads, 64 GB RAM,
-Fedora 44), as the medians of 60 rounds of `scripts/compare-batched-sends.sh` on 2026-10-25, each of
-which runs the benchmarks once against every broker.
+Fedora 44), as the medians of 60 rounds of `scripts/compare-dependency-updates.sh` on 2026-10-27,
+each of which runs the benchmarks once against every broker.
 
-Method calls, from the benchmark above as it was before the service and the client of each pair
-had a connection and a thread of their own: 1000 calls with 16 KiB of data each, through one
-connection that both shared, then through 20 such connections at once, all on one thread:
+Method calls, from the benchmark above: 1000 calls with 16 KiB of data each, by one client to its
+service, then by each of 20 clients to a service of its own, all at once:
 
-| Broker        | Version          | 1 connection | 20 connections | CPU time with 20 connections | Peak memory |
+| Broker        | Version          |     1 client |     20 clients |     CPU time with 20 clients | Peak memory |
 |---------------|------------------|-------------:|---------------:|-----------------------------:|------------:|
-| [dbus-broker] | 37               |      0.060 s |        0.427 s |                       0.28 s |     8.0 MiB |
-| [dbus-daemon] | 1.16.2           |      0.134 s |        1.143 s |                       1.12 s |     6.1 MiB |
-| [busd]        | main<sup>1</sup> |      0.071 s |        0.443 s |                       0.35 s |     6.6 MiB |
+| [dbus-broker] | 37               |      0.061 s |        0.303 s |                       0.28 s |     8.1 MiB |
+| [dbus-daemon] | 1.16.2           |      0.133 s |        1.203 s |                       1.17 s |     6.3 MiB |
+| [busd]        | main<sup>1</sup> |      0.071 s |        0.322 s |                       0.30 s |     6.8 MiB |
 
 Signals, from `cargo run --release --bin fanout`: a burst of 40,000 signals with 1 KiB of data each
-to one subscriber, then a broadcast of 6000 of them to each of 20 subscribers:
+to one subscriber, then a broadcast of 6000 of them to each of 20 subscribers, each subscriber on a
+thread of its own:
 
 | Broker        | Version          | Burst to 1 | Broadcast to 20 | CPU time of the broadcast | Peak memory |
 |---------------|------------------|-----------:|----------------:|--------------------------:|------------:|
-| [dbus-broker] | 37               |    0.188 s |         0.219 s |                    0.19 s |    14.6 MiB |
-| [dbus-daemon] | 1.16.2           |    0.847 s |         2.006 s |                    1.98 s |     5.5 MiB |
-| [busd]        | main<sup>1</sup> |    0.216 s |         0.138 s |                    0.11 s |     6.2 MiB |
+| [dbus-broker] | 37               |    0.175 s |         0.189 s |                    0.16 s |     8.2 MiB |
+| [dbus-daemon] | 1.16.2           |    0.850 s |         1.949 s |                    1.92 s |     5.5 MiB |
+| [busd]        | main<sup>1</sup> |    0.129 s |         0.075 s |                    0.04 s |     6.2 MiB |
 
-With 20 connections, the client of the method calls keeps its own CPU busy, 96% of the time, with
-busd and dbus-broker, so the CPU time of the broker is what tells those two apart there. busd
-broadcasts the signals 37% faster than dbus-broker, with about 40% less CPU time, as it writes
-several of them to a subscriber with each system call. The memory of dbus-broker is that of its two
-processes, its launcher and the broker proper, together.
-[The results](results/2026-10-25-busd-batched-sends-subscriber-threads-ryzen-7840u.md) have more on
-these, the latencies and the connection that 100 proxies share among them, and on how they were
-measured.
+busd takes 4% longer than dbus-broker with 20 clients (from +2.6 to +6.1%), where it took 26%
+longer on the zbus and the zruntime that its main branch pins, and 15% longer with one client. It
+gets the signals through faster than dbus-broker: the burst by 26%, and the broadcast by 60%, with
+74% less CPU time, as it writes several of them to a subscriber with each system call. The memory
+of dbus-broker is that of its two processes, its launcher and the broker proper, together.
+[The results](results/2026-10-27-busd-dependency-updates-ryzen-7840u.md) have more on these, on the
+latencies and on the shared phases, where busd takes 18% longer than dbus-broker with 100 clients
+and uses 50% more memory, and on how they were measured.
 
-The results that the table of method calls had before, from 2026-10-20, are in
+Before these, the tables had the results of 2026-10-25, of
+[threaded subscribers](results/2026-10-25-busd-batched-sends-subscriber-threads-ryzen-7840u.md),
+measured with busd's main branch as of z-galaxy/busd#383 and with the benchmark of then, whose
+service and client of each pair shared a connection, and whose pairs all ran on one thread. Those
+from 2026-10-20 are in
 [results/2026-10-20-zbus-6-ryzen-7840u.md](results/2026-10-20-zbus-6-ryzen-7840u.md). Those from
 2026-10-18 were measured with the benchmark on zbus 4.3, whose client was so much slower that every
-broker but dbus-daemon took about 0.92 s with 20 connections, twice as long as now. Those from 2024
-were likely made with an unoptimised build of the benchmark, as `cargo run` makes, which would have
-held every broker to about the same timings.
+broker but dbus-daemon took about 0.92 s with 20 connections, twice as long as on zbus 6. Those from
+2024 were likely made with an unoptimised build of the benchmark, as `cargo run` makes, which would
+have held every broker to about the same timings.
 
 **Note**: If you run the benchmark on your machine, make sure that `busd` is built in release mode
 (`cargo run --release` if you build+run it yourself from the source).
 
-1: Actually, the git main branch as of z-galaxy/busd#383 (fe38f44), which forwards the messages of
-each peer in batches. It was measured from ac6e6fa, an earlier version of it, whose code is the same
-but for comments.
+1: Actually, busd's main branch at d69f900 with zbus and zruntime moved to their latest commits,
+50c54bf and b3bd01d, as f415bfd of zeenix/busd pins them, which busd's main branch doesn't have yet:
+zbus decodes the header of each message in one pass there, and zruntime keeps the socket of a busy
+client watched until its task has run.
 
 [dbus-broker]: https://github.com/bus1/dbus-broker
 [dbus-daemon]: https://gitlab.freedesktop.org/dbus/dbus
