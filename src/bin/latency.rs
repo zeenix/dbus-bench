@@ -36,10 +36,10 @@ use std::{
     time::{Duration, Instant},
 };
 
+use dbus_bench::{Caller, Result};
 use futures_util::TryStreamExt;
-use serde::{Deserialize, Serialize};
 use serde_bytes::Bytes;
-use zbus::{message::Type, Connection, MatchRule, MessageStream};
+use zbus::{message::Type, Connection, MatchRule, Message, MessageStream};
 use zruntime::{lock::Barrier, mpmc};
 
 /// How many calls `single_rtt` makes.
@@ -80,38 +80,11 @@ const SCENARIO_TIMEOUT: Duration = Duration::from_secs(120);
 /// The exit status of a process that gave up on a scenario, as opposed to one that failed.
 const TIMEOUT_EXIT_STATUS: i32 = 2;
 
-/// The path that the service is at, and that the signals are emitted from.
-const PATH: &str = "/org/dbus2/benchmark";
-
 /// The interface of the signals of `fanout_delivery`.
 const INTERFACE: &str = "org.dbus2.benchmark.Fanout";
 
 /// The member of the signals of `fanout_delivery`.
 const MEMBER: &str = "Delivery";
-
-/// Anything that goes wrong ends the run, so the errors need no more than their message. They are
-/// `Send`, so that the thread of a subscriber can hand its error over.
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
-
-#[derive(Debug)]
-struct Service;
-
-#[zbus::interface(
-    name = "org.dbus2.benchmark",
-    proxy(default_path = "/org/dbus2/benchmark")
-)]
-impl Service {
-    fn take_byte_array(&self, _bytes: ByteArray<'_>) {}
-}
-
-/// The byte array of a call, borrowed from the message that carries it.
-///
-/// An argument of type `&T`, other than `&str`, is deserialized into a `T` that the method then
-/// borrows, which would copy the array out of the message. A type that holds the reference itself
-/// is deserialized as it is, and as a struct with a single field, it has the D-Bus type of that
-/// field: an array of bytes.
-#[derive(Deserialize, Serialize, zbus::wire::Type)]
-struct ByteArray<'a>(#[serde(borrow)] &'a Bytes);
 
 fn main() -> Result<()> {
     let single_rtt = single_rtt()?;
@@ -285,19 +258,17 @@ fn subscriber(
 }
 
 /// A service of the round trips, on a thread of its own, with a connection and a single-threaded
-/// runtime of its own: serves its interface at `name`, says on `ready` whether it could, and goes on
-/// serving it until `stopped` is closed.
+/// runtime of its own: owns `name`, says on `ready` whether it could, and goes on replying to the
+/// calls of its method until `stopped` is closed.
 fn serve(name: &str, ready: mpsc::Sender<Result<()>>, stopped: mpmc::Receiver<()>) -> Result<()> {
     zbus::block_on(async {
         // The name is the service's by the time that `build` returns, as it waits for the bus to
         // reply to `RequestName`.
         let connection = zbus::connection::Builder::session()
-            .serve_at(PATH, Service)
             .name(name)
             .build()
             .await;
-        // The connection serves the interface for as long as it is kept.
-        let _connection = match connection {
+        let connection = match connection {
             Ok(connection) => connection,
             Err(e) => {
                 // The thread that waits for the services gives up on the first that fails, with
@@ -307,11 +278,11 @@ fn serve(name: &str, ready: mpsc::Sender<Result<()>>, stopped: mpmc::Receiver<()
                 return Err("the service could not connect".into());
             }
         };
+        // The stream exists before the service is ready, and so before the first call is sent.
+        let calls = MessageStream::from(&connection);
         let _ = ready.send(Ok(()));
-        // As nothing is sent on the channel, this returns only once it is closed.
-        let _ = stopped.recv().await;
 
-        Ok(())
+        dbus_bench::serve(&connection, calls, stopped).await
     })
 }
 
@@ -320,17 +291,17 @@ fn serve(name: &str, ready: mpsc::Sender<Result<()>>, stopped: mpmc::Receiver<()
 /// service at `name` `calls` times, one call after the other, with `data` as the byte array.
 fn client(name: &str, data: &[u8], calls: usize, start: &Barrier) -> Result<Calls> {
     zbus::block_on(async {
-        let proxy = connect(name).await;
+        let caller = connect(name).await;
         // It arrives whether it connected or not, so that the others do not wait for good for one
         // that failed.
         start.wait().await;
-        let proxy = proxy?;
+        let mut caller = caller?;
 
         let started = Instant::now();
         let mut round_trips = Vec::with_capacity(calls);
         for _ in 0..calls {
             let before = Instant::now();
-            proxy.take_byte_array(ByteArray(Bytes::new(data))).await?;
+            caller.call(data).await?;
             round_trips.push(nanos(before.elapsed()));
         }
 
@@ -352,12 +323,12 @@ struct Calls {
     finished: Instant,
 }
 
-/// Connects a client, and makes a proxy to the service at `name` on its connection, which the proxy
-/// keeps open.
-async fn connect(name: &str) -> Result<ServiceProxy<'_>> {
-    let connection = zbus::Connection::session().await?;
+/// Connects a client, and makes a caller of the service at `name` on its connection, which the
+/// caller keeps open.
+async fn connect(name: &str) -> Result<Caller> {
+    let connection = Connection::session().await?;
 
-    Ok(ServiceProxy::new(&connection, name).await?)
+    Caller::new(connection, name)
 }
 
 /// Connects a subscriber, and subscribes it to the signals that `rule` matches.
@@ -371,13 +342,14 @@ async fn subscribe(rule: &MatchRule<'_>, queue: NonZeroUsize) -> Result<MessageS
 ///
 /// Each carries its sequence number, the time at which this started to build it, in nanoseconds
 /// since `epoch`, and `data` as payload, which is borrowed, rather than copied into the signal
-/// first, as the byte array of a call is in `main.rs`.
+/// first, as the byte array of a call is in `src/lib.rs`. They have no sender, for the bus to set.
 async fn emit(conn: &Connection, data: &[u8], epoch: Instant) -> Result<()> {
     let payload = Bytes::new(data);
     for seq in 0..FANOUT_SIGNALS as u64 {
         let sent = nanos(epoch.elapsed());
-        conn.emit_signal(None::<&str>, PATH, INTERFACE, MEMBER, &(seq, sent, payload))
-            .await?;
+        let msg =
+            Message::signal(dbus_bench::PATH, INTERFACE, MEMBER).build(&(seq, sent, payload))?;
+        conn.send(&msg).await?;
     }
 
     Ok(())

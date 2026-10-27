@@ -29,9 +29,10 @@ use std::{
     time::{Duration, Instant},
 };
 
+use dbus_bench::Result;
 use futures_util::TryStreamExt;
 use serde_bytes::Bytes;
-use zbus::{message::Type, Connection, MatchRule, MessageStream};
+use zbus::{message::Type, Connection, MatchRule, Message, MessageStream};
 
 /// How many signals the burst sends.
 ///
@@ -68,15 +69,8 @@ const PHASE_TIMEOUT: Duration = Duration::from_secs(120);
 /// The exit status of a process that gave up on a phase, as opposed to one that failed.
 const TIMEOUT_EXIT_STATUS: i32 = 2;
 
-/// The path that the signals are emitted from.
-const PATH: &str = "/org/dbus2/benchmark";
-
 /// The interface of the signals.
 const INTERFACE: &str = "org.dbus2.benchmark.Fanout";
-
-/// Anything that goes wrong ends the run, so the errors need no more than their message. They are
-/// `Send`, so that the thread of a subscriber can hand its error over.
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 fn main() -> Result<()> {
     zbus::block_on(async {
@@ -210,12 +204,12 @@ async fn subscribe(rule: &MatchRule<'_>, queue: NonZeroUsize) -> Result<MessageS
 /// Broadcasts `count` signals of `member`, each with its sequence number and `data` as payload.
 ///
 /// The payload is borrowed by every signal, rather than copied into it first, as the byte array
-/// of a call is in `main.rs`.
+/// of a call is in `src/lib.rs`. The signals have no sender, for the bus to set.
 async fn emit(conn: &Connection, member: &str, count: usize, data: &[u8]) -> Result<()> {
     let payload = Bytes::new(data);
     for seq in 0..count as u64 {
-        conn.emit_signal(None::<&str>, PATH, INTERFACE, member, &(seq, payload))
-            .await?;
+        let msg = Message::signal(dbus_bench::PATH, INTERFACE, member).build(&(seq, payload))?;
+        conn.send(&msg).await?;
     }
 
     Ok(())
