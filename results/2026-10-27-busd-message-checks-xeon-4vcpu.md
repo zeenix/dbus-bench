@@ -26,18 +26,18 @@ broker.
 
 ## Summary
 
-* After against before, no measure changes by more than the margin of ±5%, or by as much as it can
-  tell: the calls take as long (+1.4% with one client, -0.0% with 20), the signals 3.3% longer on
-  the burst to one subscriber and 2.3% longer on the broadcast to 20 (both inconclusive), and the
-  shared phases 2.8% less and 2.8% more (both inconclusive). busd uses as much CPU time, within ±5%
-  but for the signals (+3.1%, inconclusive), where its user time is 8.0% higher, as it checks the
-  bodies of 40,000 and 6000 signals. Its peak memory is 2.6 to 3.2% higher, about 140 KiB, and its
-  code 83 KiB larger.
-* The one measure that moves is the p99 of the round trips of 20 clients, 12.0% longer, 1282 µs
-  against 1145 µs, while their median and their p90 stay level. It holds less well than that: two
-  more runs of the latencies had it 11.1% longer and 3.8% shorter, and the three of them 6.0%
-  longer (from +0.7 to +11.5%), for which none of the three commits of z-galaxy/busd#391 accounts
-  alone (see [below](#the-slowest-round-trips-of-20-clients)).
+* After against before, no measure changes conclusively beyond the margin of ±5%: the calls take
+  as long (+1.4% with one client, -0.0% with 20), the signals 3.3% longer on the burst to one
+  subscriber and 2.3% longer on the broadcast to 20 (both inconclusive), and the shared phases 2.8%
+  less and 2.8% more (both inconclusive). busd uses as much CPU time, within ±5% but for the
+  signals (+3.1%, inconclusive), where its user time is 8.0% higher, as it checks the bodies of
+  40,000 and 6000 signals. Its peak memory is 2.6 to 3.2% higher, about 140 KiB, and 260 KiB on the
+  shared phases, and its code 83 KiB larger.
+* The one measure that moves further is the p99 of the round trips of 20 clients, 12.0% longer,
+  1282 µs against 1145 µs, while their median and their p90 stay level. It holds less well than
+  that: two more runs of the latencies had it 11.1% longer and 3.8% shorter, and the three of them
+  6.0% longer (from +0.7 to +11.5%), for which none of the three commits of z-galaxy/busd#391
+  accounts alone (see [below](#the-slowest-round-trips-of-20-clients)).
 * So the gap to dbus-broker barely moves. With 20 clients, busd's calls take 9.9% longer than
   dbus-broker's, before and after, and its median round trip 9.8% longer, against 8.8%; with 100
   clients, busd takes 37.4% longer, against 33.6%, as after takes 2.8% longer than before there
