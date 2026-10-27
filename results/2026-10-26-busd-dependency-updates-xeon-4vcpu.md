@@ -60,18 +60,21 @@ earlier files.
 
 ## The benchmarks
 
-The workloads, and how the comparisons work, are those of
-[the time limit of 1 s](2026-10-22-busd-send-timeout-xeon-4vcpu.md#the-benchmarks), but for the
-clients: each service, client and subscriber runs on a thread of its own, with a runtime of its
-own, as a process of its own would (461ee04, ec0e447, 6ac5fff, fd0bcaa and 5bee346). The shared
-phases are a connection that 100 proxies share to call one service, then 100 services, each with a
-client of its own. There are 60 rounds of each workload, and 40 of the shared phases, after 3 of
-warm-up, all five brokers in each round. The raw results of each run are in
+The workloads, and how the comparisons work, are those of [the time limit of 1
+s](2026-10-22-busd-send-timeout-xeon-4vcpu.md#the-benchmarks), but for the clients: each service,
+client and subscriber runs on a thread of its own, with a runtime of its own, as a process of its
+own would (461ee04, ec0e447, 6ac5fff, fd0bcaa and 5bee346). The shared phases are a connection that
+100 proxies share to call one service, then 100 services, each with a client of its own. There are
+60 rounds of each workload, and 40 of the shared phases, after 3 of warm-up, all five brokers in
+each round. The raw results of each run are in
 [runs.tar.xz](2026-10-26-busd-dependency-updates-xeon-4vcpu/runs.tar.xz), from which
 [paired-stats.py](../scripts/paired-stats.py) makes the comparisons, with the other metrics and the
-medians. A star marks a difference whose 95% interval excludes 0 but not the margin. The whole
-fan-out is how long the delivery of all the signals of the latencies' fan-out to 20 subscribers
-takes.
+medians. A star marks a difference whose 95% interval excludes 0 but not the margin. The signals are
+those of the `fanout` client: a burst of 40,000 to one subscriber, and a broadcast of 6000 to each
+of 20, each timed as a whole. The delivery to 20 is the fan-out of the `latency` client, another
+broadcast, of 2000 signals of 1 KiB to each of 20 subscribers, which times each delivery, from just
+before the emitter builds the signal until the subscriber takes it off its stream, and the whole
+fan-out how long all of them take.
 
 ### after against before
 

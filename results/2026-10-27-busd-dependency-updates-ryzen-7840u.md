@@ -41,12 +41,16 @@ The builds of busd and the clients are those of
 
 ## The benchmarks
 
-The workloads, and how the comparisons work, are those of
-[the run on the 4-vCPU Xeon](2026-10-26-busd-dependency-updates-xeon-4vcpu.md#the-benchmarks). The
-raw results of each run are in
-[runs.tar.xz](2026-10-27-busd-dependency-updates-ryzen-7840u/runs.tar.xz), from which
+The workloads, and how the comparisons work, are those of [the run on the 4-vCPU
+Xeon](2026-10-26-busd-dependency-updates-xeon-4vcpu.md#the-benchmarks). The raw results of each run
+are in [runs.tar.xz](2026-10-27-busd-dependency-updates-ryzen-7840u/runs.tar.xz), from which
 [paired-stats.py](../scripts/paired-stats.py) makes the comparisons, with the other metrics and the
-medians. A star marks a difference whose 95% interval excludes 0 but not the margin.
+medians. A star marks a difference whose 95% interval excludes 0 but not the margin. The signals are
+those of the `fanout` client: a burst of 40,000 to one subscriber, and a broadcast of 6000 to each
+of 20, each timed as a whole. The delivery to 20 is the fan-out of the `latency` client, another
+broadcast, of 2000 signals of 1 KiB to each of 20 subscribers, which times each delivery, from just
+before the emitter builds the signal until the subscriber takes it off its stream, and the whole
+fan-out how long all of them take.
 
 ### after against before
 
