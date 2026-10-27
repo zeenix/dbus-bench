@@ -5,12 +5,13 @@
 # * before: busd's main branch, at 227254e, the merge of z-galaxy/busd#388: on zbus at 50c54bf, the
 #   merge of z-galaxy/zbus#2083, and on zruntime at b3bd01d, the merge of z-galaxy/zruntime#60, as
 #   its lock file has them;
-# * after: the commit that AFTER_REV names, fd577a2 by default, the head of z-galaxy/busd#391: on
-#   the same zruntime, and on zbus at 8cb16a2, the head of z-galaxy/zbus#2086. That zbus checks a
-#   message that a connection receives as a whole, not only the fields of its header, and checks its
-#   body against its signature where the connection asks for it, as after has the connection of
-#   each client do. after also passes a reply or an error on only if it answers a call that waits
-#   for one, and sets the sender of a message that a client leaves it out of with
+# * after: the commit that AFTER_REV names, 0413582 by default, the head of z-galaxy/busd#391: on
+#   the same zruntime, and on zbus at 7ad87f4, the head of z-galaxy/zbus#2086. That zbus checks a
+#   message that a connection receives as a whole, not only the fields of its header, rejects a
+#   header with a string that doesn't end with a 0 or a field that comes twice, and checks the body
+#   of a message against its signature where the connection asks for it, as after has the
+#   connection of each client do. after also passes a reply or an error on only if it answers a call
+#   that waits for one, and sets the sender of a message that a client leaves it out of with
 #   `Message::with_sender`, which copies the bytes of the message with the field appended, rather
 #   than building the message anew, as before does. The clients of this repository leave the
 #   sender out of every message that is timed, as libdbus, GLib and sd-bus clients do, so that both
@@ -25,9 +26,10 @@
 #
 # The comparisons that this script ran before, of the ways that busd sends what it forwards to a
 # client (z-galaxy/busd#376, #382 and #383), of busd on later commits of zbus and zruntime, and of
-# z-galaxy/busd#391 at 50bf523, before it set senders with `Message::with_sender`, are those of its
-# commits, or of compare-dependency-updates.sh's, that the results of 2026-10-24 to 2026-10-27
-# name.
+# z-galaxy/busd#391 at 50bf523, before it set senders with `Message::with_sender`, and at fd577a2,
+# on zbus 8cb16a2, before zbus rejected headers with unended strings or repeated fields, are those
+# of its commits, or of compare-dependency-updates.sh's, that the results of 2026-10-24 to
+# 2026-10-27 name.
 #
 # It runs the paired comparisons of results/2026-10-23-busd-zruntime-clock-ryzen-7840u.md between
 # them, with each service and each client on a thread of its own: method calls, signals and
@@ -86,7 +88,7 @@ busd=$checkout/z-galaxy/busd
 
 # The commits measured: busd's main branch, and busd checking the messages of its clients.
 before_rev=227254e8bf912ff82f1f6852f4dfe5a98062eb6e
-after_rev=${AFTER_REV:-fd577a2ca9aac53457ccbac34802264e8e2a4c67}
+after_rev=${AFTER_REV:-0413582d079f84e695671f4630c535fe6f00d09e}
 
 # Makes sure that the repository $1 has the commit $4, by fetching it from $2 if it lacks it: by its
 # hash, which reaches a commit that the branch $3 no longer has, as a rebase of the branch leaves
