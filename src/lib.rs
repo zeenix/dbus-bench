@@ -1,5 +1,5 @@
-//! What the clients and the services of the benchmark share: the method that they call and serve,
-//! and the code that calls and serves it.
+//! What the clients and the services of the benchmark share: the methods that they call and serve,
+//! and the code that calls and serves them.
 //!
 //! They build their messages themselves, with the builders of `zbus::Message`, and send them with
 //! `Connection::send`, rather than through proxies, the object server or `Connection::emit_signal`,
@@ -17,23 +17,27 @@ use futures_util::{
 };
 use serde::{Deserialize, Serialize};
 use serde_bytes::Bytes;
-use zbus::{message::Type, names::BusName, Connection, Message, MessageStream};
+use zbus::{message::Type, names::BusName, Connection, DynamicType, Message, MessageStream};
 use zruntime::mpmc;
 
 /// The path that the services serve their interface at, and that the signals are emitted from.
 pub const PATH: &str = "/org/dbus2/benchmark";
 
-/// The interface of the method that the services serve.
+/// The interface of the methods that the services serve.
 pub const INTERFACE: &str = "org.dbus2.benchmark";
 
-/// The method that the services serve: it takes a byte array, and replies with nothing.
+/// A method that the services serve: it takes a byte array, and replies with nothing.
 pub const METHOD: &str = "TakeByteArray";
+
+/// The other method that the services serve: it takes the dicts of the `dicts` workload, a dict of
+/// dicts of variants, and replies with nothing, without the service reading the dicts.
+pub const DICTS_METHOD: &str = "TakeDicts";
 
 /// Anything that goes wrong ends the run, so the errors need no more than their message. They are
 /// `Send`, so that the thread of a service or a client can hand its error over.
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
-/// A caller of the method of a service, on a connection that is its alone.
+/// A caller of the methods of a service, on a connection that is its alone.
 ///
 /// It makes a stream of the connection along with itself, before anything is sent, as a reply that
 /// arrives before the stream exists is not delivered to it, and reads the reply to each call off
@@ -66,11 +70,22 @@ impl Caller {
         })
     }
 
-    /// Calls the service with `data` as the byte array, and waits for the reply.
+    /// Calls `METHOD` of the service with `data` as the byte array, and waits for the reply.
     ///
     /// Fails if the service replies with an error, or the connection closes first.
     pub async fn call(&mut self, data: &[u8]) -> Result<()> {
-        let msg = call_message(&self.destination, data)?;
+        self.call_with(METHOD, &ByteArray(Bytes::new(data))).await
+    }
+
+    /// Calls `method` of the service with `body` as the body of the call, and waits for the reply.
+    ///
+    /// Fails if the service replies with an error, which is what it does for any method but
+    /// `METHOD` and `DICTS_METHOD`, or the connection closes first.
+    pub async fn call_with<B>(&mut self, method: &str, body: &B) -> Result<()>
+    where
+        B: Serialize + DynamicType,
+    {
+        let msg = method_call(&self.destination, method, body)?;
         let serial = msg.primary_header().serial_num();
         self.connection.send(&msg).await?;
 
@@ -85,15 +100,15 @@ impl Caller {
     }
 }
 
-/// Serves the method on `connection` until `stopped` is closed, replying to each call that
+/// Serves the methods on `connection` until `stopped` is closed, replying to each call that
 /// `calls` yields.
 ///
 /// `calls` is a stream of the connection that was made right after the connection was, so that it
 /// has every call that the connection receives. The messages that are not calls are ignored. The
 /// replies are sent as they are built, with no sender, for the bus to set. A call of anything but
-/// the method gets an error for a reply.
+/// the methods gets an error for a reply.
 ///
-/// Fails if `calls` ends first, or a call has a body that is not a byte array.
+/// Fails if `calls` ends first, or a call of `METHOD` has a body that is not a byte array.
 pub async fn serve(
     connection: &Connection,
     calls: MessageStream,
@@ -113,12 +128,7 @@ pub async fn serve(
 ///
 /// It has no sender, for the bus to set.
 pub fn call_message(destination: &BusName<'_>, data: &[u8]) -> Result<Message> {
-    let msg = Message::method_call(PATH, METHOD)
-        .destination(destination)
-        .interface(INTERFACE)
-        .build(&ByteArray(Bytes::new(data)))?;
-
-    Ok(msg)
+    method_call(destination, METHOD, &ByteArray(Bytes::new(data)))
 }
 
 /// The serial number of the call that `msg` is the reply to, if it is a reply: a method return or
@@ -145,6 +155,21 @@ pub fn check_reply(reply: &Message) -> Result<()> {
     Err(format!("the call failed with {name}").into())
 }
 
+/// A call of `method` of the interface of the services, to `destination`, with `body` as its body.
+///
+/// It has no sender, for the bus to set.
+fn method_call<B>(destination: &BusName<'_>, method: &str, body: &B) -> Result<Message>
+where
+    B: Serialize + DynamicType,
+{
+    let msg = Message::method_call(PATH, method)
+        .destination(destination)
+        .interface(INTERFACE)
+        .build(body)?;
+
+    Ok(msg)
+}
+
 /// Replies to each of the calls that `calls` yields, until it ends.
 async fn reply_to_calls(connection: &Connection, mut calls: MessageStream) -> Result<()> {
     while let Some(msg) = calls.try_next().await? {
@@ -155,19 +180,25 @@ async fn reply_to_calls(connection: &Connection, mut calls: MessageStream) -> Re
         let ours = header.path().is_some_and(|path| path.as_str() == PATH)
             && header
                 .interface()
-                .is_some_and(|interface| interface.as_str() == INTERFACE)
-            && header
-                .member()
-                .is_some_and(|member| member.as_str() == METHOD);
+                .is_some_and(|interface| interface.as_str() == INTERFACE);
+        let method = header
+            .member()
+            .filter(|_| ours)
+            .map(|member| member.as_str());
 
-        let reply = if ours {
-            let body = msg.body();
-            let _: ByteArray<'_> = body.deserialize()?;
+        let reply = match method {
+            Some(METHOD) => {
+                let body = msg.body();
+                let _: ByteArray<'_> = body.deserialize()?;
 
-            Message::method_return(&header).build(&())?
-        } else {
-            Message::error(&header, "org.freedesktop.DBus.Error.UnknownMethod")
-                .build(&("Unknown method",))?
+                Message::method_return(&header).build(&())?
+            }
+            // The dicts are not deserialized, so that what a round trip takes is the broker's as
+            // far as it can be, rather than the service's deserializing of their 100 variants. The
+            // byte array above is cheap to deserialize, as it is borrowed from the message.
+            Some(DICTS_METHOD) => Message::method_return(&header).build(&())?,
+            _ => Message::error(&header, "org.freedesktop.DBus.Error.UnknownMethod")
+                .build(&("Unknown method",))?,
         };
         connection.send(&reply).await?;
     }

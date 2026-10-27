@@ -19,6 +19,9 @@ DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus cargo run --release
 Build the benchmark in release mode, as above: the client is what limits the timings of the
 fastest brokers, and an unoptimised one is several times slower than any of them.
 
+`cargo run --release --bin dicts` runs the method calls with an `a{sa{sv}}` body of 100 variants
+instead of a byte array, for what checking such bodies costs a broker.
+
 To compare brokers, `scripts/compare-brokers.py` starts each of them, runs the benchmark against
 them a number of times in turn and reports statistics of the results (see its `--help`).
 `scripts/compare-busd-builds.sh` uses it to compare builds of busd with dbus-daemon and

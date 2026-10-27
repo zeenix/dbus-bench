@@ -14,7 +14,10 @@
 #   `Message::with_sender`, which copies the bytes of the message with the field appended, rather
 #   than building the message anew, as before does. The clients of this repository leave the
 #   sender out of every message that is timed, as libdbus, GLib and sd-bus clients do, so that both
-#   set it for each.
+#   set it for each;
+# * unchecked: after, but for the line that has zbus check the bodies of the messages of each
+#   client, which the script drops from its export. So after against unchecked is what checking the
+#   bodies costs, and nothing else.
 #
 # after differs from before in zbus and in foldhash, which it adds, alone, as the script checks in
 # their lock files. The clients of this repository build on the zbus and the zruntime that its own
@@ -29,9 +32,11 @@
 # It runs the paired comparisons of results/2026-10-23-busd-zruntime-clock-ryzen-7840u.md between
 # them, with each service and each client on a thread of its own: method calls, signals and
 # latencies, and the connection that 100 callers share to call one service, then 100 services, each
-# with a client of its own. Every round runs each broker once, in an order shuffled for each round,
-# after WARMUP rounds that the tables leave out. It writes the tables (.md), the runs (.json) and
-# the comparisons in pairs (.stats.md and .stats.json): after against before, before and after
+# with a client of its own, and the method calls of the `dicts` client, whose body is a dict of
+# dicts of 100 variants in all, `a{sa{sv}}`, which costs far more to check than the byte arrays of
+# the others. Every round runs each broker once, in an order shuffled for each round, after WARMUP
+# rounds that the tables leave out. It writes the tables (.md), the runs (.json) and the comparisons
+# in pairs (.stats.md and .stats.json): after against before and against unchecked, before and after
 # against dbus-broker, and after against dbus-daemon.
 #
 # It expects a checkout of busd under $CHECKOUT (default: ~/checkout), laid out as on GitHub:
@@ -49,8 +54,8 @@
 # Usage: scripts/compare-batched-sends.sh
 #
 # The environment sets the rest. ROUNDS (default: 60) and SHARED_ROUNDS (default: 40) are the
-# numbers of rounds of the comparisons of the calls, the signals and the latencies, and of the
-# shared connection, each after WARMUP (default: 3) rounds.
+# numbers of rounds of the comparisons of the calls, the signals, the latencies and the dicts, and
+# of the shared connection, each after WARMUP (default: 3) rounds.
 #
 # dbus-broker, which needs dbus-broker-launch and systemd-socket-activate, and dbus-daemon are left
 # out where they are missing. Where there is no systemd, dbus-broker-launch fails unless something
@@ -146,6 +151,19 @@ locked_packages() {
         grep -v -E '^"zbus(_[a-z]+)?" [^ ]+ "git\+'
 }
 
+# Has the export of busd in the current directory leave the bodies of the messages of its clients
+# unchecked, by dropping the line that has zbus check them, and fails unless it has just one.
+leave_bodies_unchecked() {
+    local file=src/peer/mod.rs pattern='^ *\.validate_bodies()$' lines
+    lines=$(grep -c "$pattern" "$file" || true)
+    if [ "$lines" != 1 ]; then
+        echo "The export of busd was to have one line that has zbus check the bodies of the" \
+            "messages of its clients, in $file, but it has $lines." >&2
+        return 1
+    fi
+    sed -i "/$pattern/d" "$file"
+}
+
 have "$busd" https://github.com/z-galaxy/busd main "$before_rev"
 # The after commit is on z-galaxy/busd once it merges it from a branch of zeenix/busd.
 git -C "$busd" cat-file -e "$after_rev^{commit}" 2>/dev/null ||
@@ -170,7 +188,8 @@ if [ -n "$lock_diff" ]; then
     echo "$lock_diff" >&2
     exit 1
 fi
-builds=(before after)
+export_rev "$busd" "$after_rev" "$work/busd-unchecked" leave_bodies_unchecked
+builds=(before unchecked after)
 for build in "${builds[@]}"; do
     (cd "$work/busd-$build" && cargo build --release --locked)
 done
@@ -182,7 +201,7 @@ mkdir -p "$bin"
 for build in "${builds[@]}"; do
     cp "$work/busd-$build/target/release/busd" "$bin/busd-$build"
 done
-for client in dbus-bench fanout latency shared; do
+for client in dbus-bench fanout latency shared dicts; do
     cp "$bench/target/release/$client" "$bin/$client"
 done
 
@@ -210,12 +229,13 @@ mkdir -p "$out"
 # forwards messages, so the log that a failed run shows names the cause, at no cost to the others.
 brokers=(
     --broker before "RUST_LOG=busd=debug $bin/busd-before --address {address}"
+    --broker unchecked "RUST_LOG=busd=debug $bin/busd-unchecked --address {address}"
     --broker after "RUST_LOG=busd=debug $bin/busd-after --address {address}"
 )
 meta=(--meta "rustc=$(first_line rustc --version)" --meta "before=$before_rev"
-    --meta "after=$after_rev" --meta "zbus-before=$zbus_before" --meta "zbus-after=$zbus_after"
-    --meta "zruntime=$zruntime")
-pairs=(before:after)
+    --meta "after=$after_rev" --meta "unchecked=$after_rev without the check of bodies"
+    --meta "zbus-before=$zbus_before" --meta "zbus-after=$zbus_after" --meta "zruntime=$zruntime")
+pairs=(before:after unchecked:after)
 # dbus-broker runs only under its launcher, which takes its socket from systemd's socket activation
 # and connects to the bus that $DBUS_SESSION_BUS_ADDRESS names, the one it launches here rather
 # than the desktop's: see scripts/compare-brokers.py.
@@ -257,8 +277,12 @@ echo "== 100 callers sharing a connection, then 100 clients: $shared_rounds roun
 DBUS_BENCH_CLIENTS=100 python3 scripts/compare-brokers.py --bench "$bin/shared" \
     --rounds "$shared_rounds" --warmup "$warmup" --seed 34 --out "$out/shared.json" \
     "${meta[@]}" "${brokers[@]}" > "$out/shared.md" || failed+=(shared)
+echo "== method calls with dicts of 100 variants (dicts): $rounds rounds" >&2
+python3 scripts/compare-brokers.py --bench "$bin/dicts" --rounds "$rounds" \
+    --warmup "$warmup" --seed 35 --out "$out/dicts.json" "${meta[@]}" "${brokers[@]}" \
+    > "$out/dicts.md" || failed+=(dicts)
 
-for workload in calls signals latency shared; do
+for workload in calls signals latency shared dicts; do
     [ -e "$out/$workload.json" ] || continue
     for pair in "${pairs[@]}"; do
         base=${pair%:*} cand=${pair#*:}
