@@ -291,7 +291,8 @@ with the field appended since: by fd577a2's counts, a burst of 40,000 signals of
 of bytes, from a client that leaves the sender out, takes busd about 20,400 instructions more for
 each than one from a client that sets it, before fd577a2, and about 2,000 more with it. So for
 clients that leave the sender out, as most do, busd costs more than the workloads here show before
-fd577a2, and fd577a2 takes back more than they can show.
+fd577a2, and fd577a2 takes back more than they can show. [The run with clients that leave the
+sender out](2026-10-27-busd-sender-less-clients-xeon-4vcpu.md) measures both.
 
 ## Reproducing
 
