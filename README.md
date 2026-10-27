@@ -55,11 +55,25 @@ thread of its own:
 | [busd]        | main<sup>1</sup> |    0.129 s |         0.075 s |                    0.04 s |     6.2 MiB |
 
 busd gets the burst of signals through 26% faster than dbus-broker, and broadcasts them 60% faster,
-with 74% less CPU time, as it writes several signals to a subscriber with each system call. The
-memory of dbus-broker is that of its two processes, its launcher and the broker proper, together.
+with 74% less CPU time, as it writes several signals to a subscriber with each system call.
+
+Latencies, from `cargo run --release --bin latency`, as the medians over the rounds of their p50 and
+their p99: the round trips of 5000 calls with 64 bytes of data each, by one client to its service,
+and of 1000 calls with 16 KiB each, by each of 20 clients to a service of its own, all at once, and
+the delays of the signals of a fan-out:
+
+| Broker        | Version          | Round trip, 1 client | Round trip, 20 clients | Fan-out to 20<sup>2</sup> |
+|---------------|------------------|---------------------:|-----------------------:|--------------------------:|
+| [dbus-broker] | 37               |          48 / 106 µs |           287 / 444 µs |              2.0 / 3.3 ms |
+| [dbus-daemon] | 1.16.2           |          91 / 192 µs |         1170 / 1396 µs |            19.6 / 31.6 ms |
+| [busd]        | main<sup>1</sup> |          57 / 125 µs |           290 / 439 µs |              1.1 / 1.9 ms |
+
+busd is level with dbus-broker on the round trips of 20 clients, takes 21% longer on those of one,
+and delivers the signals of the fan-out 45% sooner at the median and 42% sooner at p99. The memory
+of dbus-broker is that of its two processes, its launcher and the broker proper, together.
 [The results](results/2026-10-27-busd-dependency-updates-ryzen-7840u.md) have more on these, on the
-latencies and on the shared phases, where busd takes 18% longer than dbus-broker with 100 clients
-and uses 50% more memory, and on how they were measured.
+shared phases, where busd takes 18% longer than dbus-broker with 100 clients and uses 50% more
+memory, and on how they were measured.
 
 Before these, the tables had the results of 2026-10-25, of
 [threaded subscribers](results/2026-10-25-busd-batched-sends-subscriber-threads-ryzen-7840u.md),
@@ -79,6 +93,11 @@ have held every broker to about the same timings.
 zbus (50c54bf), which decodes the header of each message in one pass, and of zruntime (b3bd01d),
 which keeps the socket of a busy client watched until its task has run. It was measured from the
 commit of that pull request, f415bfd.
+
+2: A broadcast of signals, like the one of the signals above, but timed signal by signal: one
+connection sends 2000 signals with 1 KiB of data each, back to back, and each of 20 subscribers
+receives all of them. Each delivery is timed from just before the sender builds the signal until the
+subscriber takes it off its stream, so the p99 is how long the slowest 1% of the deliveries waited.
 
 [dbus-broker]: https://github.com/bus1/dbus-broker
 [dbus-daemon]: https://gitlab.freedesktop.org/dbus/dbus
