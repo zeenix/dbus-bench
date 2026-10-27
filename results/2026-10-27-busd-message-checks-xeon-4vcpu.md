@@ -24,6 +24,16 @@ The two differ in zbus, and in the foldhash that after adds, alone, as the scrip
 lock files. The clients are those of f9aec77, on the zbus and the zruntime of before, against every
 broker.
 
+z-galaxy/busd#391 has moved on since, to fd577a2, on zbus 8cb16a2. Its earlier commits are those of
+50bf523, but for a fuzz target of zbus, and the new one has busd set the sender of a message that a
+client leaves it out of with zbus's new `Message::with_sender`, which copies the bytes of the
+message with the field appended, rather than building the message anew. zbus sets the sender of
+every message of its clients but their `Hello`, so the clients of this repository have busd set it
+for one message of each connection alone: a trace of fd577a2 shows it adding the field to 42
+messages for the benchmark of method calls, 23 for `fanout`, 63 for `latency` and 202 for `shared`,
+each the `Hello` of one of their connections. So these numbers stand for the head of the pull
+request too, on these workloads.
+
 ## Summary
 
 * After against before, no measure changes conclusively beyond the margin of ±5%: the calls take
@@ -48,7 +58,8 @@ broker.
   phase.
 * Every workload carries a byte array: the calls take an `ay`, and the signals a number or two and
   an `ay`, which the check of a body passes over in one step. The bodies whose check costs the
-  most, such as a dict of variants, as properties are, are in none of them (see
+  most, such as a dict of variants, as properties are, are in none of them, and their clients set
+  the sender of each message, which libdbus, GLib and sd-bus clients leave for the bus to set (see
   [below](#what-the-workloads-leave-out)).
 * No run of any broker failed. A run of each client against after, with busd's debug log on, showed
   no client disconnected for its messages: the only disconnections were those of the clients
@@ -256,9 +267,11 @@ call costs busd about 700 instructions more with after, by the counts of z-galax
 check its body of 16 KiB and about 485 for the record of its reply. That is well under a
 microsecond, so the work itself is not what lengthens the slowest round trips by 70 µs or more;
 the 20 clients, their services and the bus share 4 vCPUs, which makes the slowest round trips
-sensitive to small shifts in how their threads are scheduled. The raw results of the two runs are
-in [latency-rerun](2026-10-27-busd-message-checks-xeon-4vcpu/latency-rerun/runs.tar.xz) and
-[latency-by-commit](2026-10-27-busd-message-checks-xeon-4vcpu/latency-by-commit/runs.tar.xz).
+sensitive to small shifts in how their threads are scheduled. On the Ryzen 7 7840U, with 16 threads,
+after's p99 is 0.6% longer (from -5.4 to +6.8%, [the run of
+2026-10-27](2026-10-27-busd-message-checks-ryzen-7840u.md)), which fits that. The raw results of the
+two runs are in [latency-rerun](2026-10-27-busd-message-checks-xeon-4vcpu/latency-rerun/runs.tar.xz)
+and [latency-by-commit](2026-10-27-busd-message-checks-xeon-4vcpu/latency-by-commit/runs.tar.xz).
 
 ## What the workloads leave out
 
@@ -270,6 +283,15 @@ the instructions that busd runs. For a call with a dict of 20 entries of numbers
 and arrays of strings in variants, it counts 9,500 more, 26% more in all. A dict of variants is what
 properties come in, with `GetAll` and `PropertiesChanged`, so where much of a bus's traffic is of
 those, the check costs busd more than here. None of the workloads measures that.
+
+Nor do they measure messages without a sender. The clients here are zbus's, which sets the sender
+of every message but `Hello`, whereas libdbus, GLib and sd-bus leave it out of every message, for
+the bus to set. busd built each such message anew to set it, before fd577a2, and copies its bytes
+with the field appended since: by fd577a2's counts, a burst of 40,000 signals of a number and 1 KiB
+of bytes, from a client that leaves the sender out, takes busd about 20,400 instructions more for
+each than one from a client that sets it, before fd577a2, and about 2,000 more with it. So for
+clients that leave the sender out, as most do, busd costs more than the workloads here show before
+fd577a2, and fd577a2 takes back more than they can show.
 
 ## Reproducing
 
