@@ -30,12 +30,12 @@ earlier files.
 ## Summary
 
 * Against before, after uses 17 to 42% less CPU time on every workload, with 33 to 59% less user
-  time. It takes 15.9% less time on the calls of 20 connections, 40.3% less on the burst of signals
-  to one subscriber and 21.2% less on the broadcast to 20, 20.1% less on the median round trip of 20
-  connections and 14.0% less at p99, 18.0% less on the whole fan-out, and 18.0% and 24.1% less on
-  the shared phases, while one connection's calls and round trips take 5 to 6% less (inconclusive,
-  but repeatable). The one measure that is worse is the delay of the slowest signals of the
-  latencies' fan-out: 26.5% longer at p99, 10.7 ms against 8.5 ms (see
+  time. It takes 15.9% less time on the calls of 20 clients, 40.3% less on the burst of signals to
+  one subscriber and 21.2% less on the broadcast to 20, 20.1% less on the median round trip of 20
+  clients and 14.0% less at p99, 18.0% less on the whole fan-out, and 18.0% and 24.1% less on the
+  shared phases, while one client's calls and round trips take 5 to 6% less (inconclusive, but
+  repeatable). The one measure that is worse is the delay of the slowest signals of the latencies'
+  fan-out: 26.5% longer at p99, 10.7 ms against 8.5 ms (see
   [below](#the-slowest-signals-of-the-fan-out)).
 * Almost all of that comes from zbus: after against zruntime matches after against before on
   everything but the second shared phase, the 100 clients, which zruntime makes 6.5% faster (from
@@ -44,18 +44,18 @@ earlier files.
   EPOLL_CTL_ADDs and 200,009 EPOLL_CTL_DELs, and the zruntime build 540 of each, but its epoll waits
   return 643,361 events, against 207,892, as each wait that cannot sleep reports the socket of a
   task that is still queued again: what z-galaxy/zruntime#59 said its fix leaves.
-* Against dbus-broker, after is faster on one connection (12.6% on the calls), on the signals (21.7%
+* Against dbus-broker, after is faster with one client (12.6% on the calls), on the signals (21.7%
   on the burst, which before took 31.3% longer, and 55.9% on the broadcast), on the latencies'
-  fan-out (39 to 53%) and on the first shared phase (19.1%). It is slower with 20 connections, where
-  the calls take 11.5% longer (before: 32.6%) and the median round trip 4.7% longer (inconclusive;
+  fan-out (39 to 53%) and on the first shared phase (19.1%). It is slower with 20 clients, where the
+  calls take 11.5% longer (before: 32.6%) and the median round trip 4.7% longer (inconclusive;
   before: 31.0%), and with 100 clients, which take 32.2% longer (before: 74.1%). Its user time is
   still 50 to 59% higher on the calls, the latencies and the shared phases, and its system time
   level or lower, so it uses 9.8% more CPU time on the calls, 10.2% more on the shared phases, 4.4%
   less on the latencies (inconclusive) and 51.5% less on the signals, with 22 to 44% less peak
   memory, but for the shared phases (+3.4%).
-* Against dbus-daemon, after is faster on every measure but the p99 round trip of one connection
-  (-6.6%, inconclusive), and uses 50 to 87% less CPU time, with as much peak memory, or 6.8% less
-  on the shared phases.
+* Against dbus-daemon, after is faster on every measure but the p99 round trip of one client (-6.6%,
+  inconclusive), and uses 50 to 87% less CPU time, with as much peak memory, or 6.8% less on the
+  shared phases.
 * No run of any broker failed.
 
 ## The benchmarks
@@ -77,14 +77,14 @@ takes.
 
 | Measure | n | before | after | Diff | 95% CI | Verdict |
 |---|---:|---:|---:|---:|---|---|
-| calls, 1 connection | 60 | 0.166 s | 0.157 s | -5.2% | -7.8, -2.5 | inconclusive* |
-| calls, 20 connections | 60 | 0.927 s | 0.779 s | -15.9% | -19.0, -12.6 | **better** |
+| calls, 1 client | 60 | 0.166 s | 0.157 s | -5.2% | -7.8, -2.5 | inconclusive* |
+| calls, 20 clients | 60 | 0.927 s | 0.779 s | -15.9% | -19.0, -12.6 | **better** |
 | signals, burst to 1 | 60 | 0.333 s | 0.198 s | -40.3% | -42.9, -37.7 | **better** |
 | signals, broadcast to 20 | 60 | 0.233 s | 0.184 s | -21.2% | -25.8, -16.2 | **better** |
-| RTT, 1 connection, p50 | 60 | 144 µs | 135 µs | -6.2% | -7.7, -4.7 | inconclusive* |
-| RTT, 1 connection, p99 | 60 | 293 µs | 278 µs | -5.1% | -9.2, -1.0 | inconclusive* |
-| RTT, 20 connections, p50 | 60 | 825 µs | 659 µs | -20.1% | -22.5, -17.4 | **better** |
-| RTT, 20 connections, p99 | 60 | 1703 µs | 1465 µs | -14.0% | -20.1, -7.7 | **better** |
+| RTT, 1 client, p50 | 60 | 144 µs | 135 µs | -6.2% | -7.7, -4.7 | inconclusive* |
+| RTT, 1 client, p99 | 60 | 293 µs | 278 µs | -5.1% | -9.2, -1.0 | inconclusive* |
+| RTT, 20 clients, p50 | 60 | 825 µs | 659 µs | -20.1% | -22.5, -17.4 | **better** |
+| RTT, 20 clients, p99 | 60 | 1703 µs | 1465 µs | -14.0% | -20.1, -7.7 | **better** |
 | delivery to 20, p50 | 60 | 3.3 ms | 2.7 ms | -19.2% | -24.3, -13.8 | **better** |
 | delivery to 20, p99 | 60 | 8.5 ms | 10.7 ms | +26.5% | +13.5, +41.5 | **worse** |
 | delivery to 20, whole fan-out | 60 | 0.078 s | 0.064 s | -18.0% | -22.4, -13.3 | **better** |
@@ -111,14 +111,14 @@ takes.
 
 | Measure | n | before | zruntime | Diff | 95% CI | Verdict |
 |---|---:|---:|---:|---:|---|---|
-| calls, 1 connection | 60 | 0.166 s | 0.167 s | +0.3% | -2.1, +2.7 | within ±5% |
-| calls, 20 connections | 60 | 0.927 s | 0.922 s | -0.5% | -3.1, +2.2 | within ±5% |
+| calls, 1 client | 60 | 0.166 s | 0.167 s | +0.3% | -2.1, +2.7 | within ±5% |
+| calls, 20 clients | 60 | 0.927 s | 0.922 s | -0.5% | -3.1, +2.2 | within ±5% |
 | signals, burst to 1 | 60 | 0.333 s | 0.332 s | -0.2% | -4.2, +4.2 | within ±5% |
 | signals, broadcast to 20 | 60 | 0.233 s | 0.228 s | -2.3% | -5.9, +1.7 | inconclusive |
-| RTT, 1 connection, p50 | 60 | 144 µs | 144 µs | +0.4% | -1.4, +2.2 | within ±5% |
-| RTT, 1 connection, p99 | 60 | 293 µs | 299 µs | +2.1% | -2.5, +7.1 | inconclusive |
-| RTT, 20 connections, p50 | 60 | 825 µs | 819 µs | -0.7% | -3.6, +2.2 | within ±5% |
-| RTT, 20 connections, p99 | 60 | 1703 µs | 1870 µs | +9.8% | +1.1, +19.2 | inconclusive* |
+| RTT, 1 client, p50 | 60 | 144 µs | 144 µs | +0.4% | -1.4, +2.2 | within ±5% |
+| RTT, 1 client, p99 | 60 | 293 µs | 299 µs | +2.1% | -2.5, +7.1 | inconclusive |
+| RTT, 20 clients, p50 | 60 | 825 µs | 819 µs | -0.7% | -3.6, +2.2 | within ±5% |
+| RTT, 20 clients, p99 | 60 | 1703 µs | 1870 µs | +9.8% | +1.1, +19.2 | inconclusive* |
 | delivery to 20, p50 | 60 | 3.3 ms | 3.4 ms | +3.2% | -5.1, +11.9 | inconclusive |
 | delivery to 20, p99 | 60 | 8.5 ms | 8.3 ms | -1.5% | -10.5, +8.2 | inconclusive |
 | delivery to 20, whole fan-out | 60 | 0.078 s | 0.079 s | +1.7% | -4.6, +8.4 | inconclusive |
@@ -145,14 +145,14 @@ takes.
 
 | Measure | n | zruntime | after | Diff | 95% CI | Verdict |
 |---|---:|---:|---:|---:|---|---|
-| calls, 1 connection | 60 | 0.167 s | 0.157 s | -5.5% | -8.0, -3.0 | inconclusive* |
-| calls, 20 connections | 60 | 0.922 s | 0.779 s | -15.5% | -18.6, -12.2 | **better** |
+| calls, 1 client | 60 | 0.167 s | 0.157 s | -5.5% | -8.0, -3.0 | inconclusive* |
+| calls, 20 clients | 60 | 0.922 s | 0.779 s | -15.5% | -18.6, -12.2 | **better** |
 | signals, burst to 1 | 60 | 0.332 s | 0.198 s | -40.2% | -43.1, -37.2 | **better** |
 | signals, broadcast to 20 | 60 | 0.228 s | 0.184 s | -19.3% | -23.8, -14.1 | **better** |
-| RTT, 1 connection, p50 | 60 | 144 µs | 135 µs | -6.6% | -7.9, -5.1 | **better** |
-| RTT, 1 connection, p99 | 60 | 299 µs | 278 µs | -7.1% | -11.0, -2.9 | inconclusive* |
-| RTT, 20 connections, p50 | 60 | 819 µs | 659 µs | -19.5% | -22.0, -16.8 | **better** |
-| RTT, 20 connections, p99 | 60 | 1870 µs | 1465 µs | -21.7% | -28.5, -13.8 | **better** |
+| RTT, 1 client, p50 | 60 | 144 µs | 135 µs | -6.6% | -7.9, -5.1 | **better** |
+| RTT, 1 client, p99 | 60 | 299 µs | 278 µs | -7.1% | -11.0, -2.9 | inconclusive* |
+| RTT, 20 clients, p50 | 60 | 819 µs | 659 µs | -19.5% | -22.0, -16.8 | **better** |
+| RTT, 20 clients, p99 | 60 | 1870 µs | 1465 µs | -21.7% | -28.5, -13.8 | **better** |
 | delivery to 20, p50 | 60 | 3.4 ms | 2.7 ms | -21.6% | -27.3, -15.4 | **better** |
 | delivery to 20, p99 | 60 | 8.3 ms | 10.7 ms | +28.4% | +13.7, +44.7 | **worse** |
 | delivery to 20, whole fan-out | 60 | 0.079 s | 0.064 s | -19.3% | -24.5, -13.8 | **better** |
@@ -179,14 +179,14 @@ takes.
 
 | Measure | n | dbus-broker | after | Diff | 95% CI | Verdict |
 |---|---:|---:|---:|---:|---|---|
-| calls, 1 connection | 60 | 0.180 s | 0.157 s | -12.6% | -14.6, -10.6 | **better** |
-| calls, 20 connections | 60 | 0.699 s | 0.779 s | +11.5% | +7.2, +16.3 | **worse** |
+| calls, 1 client | 60 | 0.180 s | 0.157 s | -12.6% | -14.6, -10.6 | **better** |
+| calls, 20 clients | 60 | 0.699 s | 0.779 s | +11.5% | +7.2, +16.3 | **worse** |
 | signals, burst to 1 | 60 | 0.253 s | 0.198 s | -21.7% | -25.4, -17.7 | **better** |
 | signals, broadcast to 20 | 60 | 0.416 s | 0.184 s | -55.9% | -58.9, -52.6 | **better** |
-| RTT, 1 connection, p50 | 60 | 156 µs | 135 µs | -13.7% | -15.0, -12.3 | **better** |
-| RTT, 1 connection, p99 | 60 | 302 µs | 278 µs | -8.0% | -12.0, -3.7 | inconclusive* |
-| RTT, 20 connections, p50 | 60 | 630 µs | 659 µs | +4.7% | +0.5, +9.0 | inconclusive* |
-| RTT, 20 connections, p99 | 60 | 1516 µs | 1465 µs | -3.4% | -10.8, +5.1 | inconclusive |
+| RTT, 1 client, p50 | 60 | 156 µs | 135 µs | -13.7% | -15.0, -12.3 | **better** |
+| RTT, 1 client, p99 | 60 | 302 µs | 278 µs | -8.0% | -12.0, -3.7 | inconclusive* |
+| RTT, 20 clients, p50 | 60 | 630 µs | 659 µs | +4.7% | +0.5, +9.0 | inconclusive* |
+| RTT, 20 clients, p99 | 60 | 1516 µs | 1465 µs | -3.4% | -10.8, +5.1 | inconclusive |
 | delivery to 20, p50 | 60 | 4.4 ms | 2.7 ms | -39.3% | -46.2, -32.2 | **better** |
 | delivery to 20, p99 | 60 | 20.2 ms | 10.7 ms | -47.1% | -58.4, -31.0 | **better** |
 | delivery to 20, whole fan-out | 60 | 0.134 s | 0.064 s | -52.6% | -55.6, -49.3 | **better** |
@@ -213,14 +213,14 @@ takes.
 
 | Measure | n | dbus-broker | before | Diff | 95% CI | Verdict |
 |---|---:|---:|---:|---:|---|---|
-| calls, 1 connection | 60 | 0.180 s | 0.166 s | -7.8% | -9.8, -5.7 | **better** |
-| calls, 20 connections | 60 | 0.699 s | 0.927 s | +32.6% | +28.1, +37.2 | **worse** |
+| calls, 1 client | 60 | 0.180 s | 0.166 s | -7.8% | -9.8, -5.7 | **better** |
+| calls, 20 clients | 60 | 0.699 s | 0.927 s | +32.6% | +28.1, +37.2 | **worse** |
 | signals, burst to 1 | 60 | 0.253 s | 0.333 s | +31.3% | +26.1, +36.5 | **worse** |
 | signals, broadcast to 20 | 60 | 0.416 s | 0.233 s | -44.0% | -47.2, -40.7 | **better** |
-| RTT, 1 connection, p50 | 60 | 156 µs | 144 µs | -8.0% | -9.6, -6.3 | **better** |
-| RTT, 1 connection, p99 | 60 | 302 µs | 293 µs | -3.0% | -7.4, +1.4 | inconclusive |
-| RTT, 20 connections, p50 | 60 | 630 µs | 825 µs | +31.0% | +26.1, +35.7 | **worse** |
-| RTT, 20 connections, p99 | 60 | 1516 µs | 1703 µs | +12.4% | +4.1, +21.4 | inconclusive* |
+| RTT, 1 client, p50 | 60 | 156 µs | 144 µs | -8.0% | -9.6, -6.3 | **better** |
+| RTT, 1 client, p99 | 60 | 302 µs | 293 µs | -3.0% | -7.4, +1.4 | inconclusive |
+| RTT, 20 clients, p50 | 60 | 630 µs | 825 µs | +31.0% | +26.1, +35.7 | **worse** |
+| RTT, 20 clients, p99 | 60 | 1516 µs | 1703 µs | +12.4% | +4.1, +21.4 | inconclusive* |
 | delivery to 20, p50 | 60 | 4.4 ms | 3.3 ms | -24.9% | -34.2, -15.3 | **better** |
 | delivery to 20, p99 | 60 | 20.2 ms | 8.5 ms | -58.2% | -66.7, -46.3 | **better** |
 | delivery to 20, whole fan-out | 60 | 0.134 s | 0.078 s | -42.2% | -46.3, -37.7 | **better** |
@@ -247,14 +247,14 @@ takes.
 
 | Measure | n | dbus-daemon | after | Diff | 95% CI | Verdict |
 |---|---:|---:|---:|---:|---|---|
-| calls, 1 connection | 60 | 0.184 s | 0.157 s | -14.3% | -16.5, -12.0 | **better** |
-| calls, 20 connections | 60 | 1.559 s | 0.779 s | -50.0% | -51.6, -48.3 | **better** |
+| calls, 1 client | 60 | 0.184 s | 0.157 s | -14.3% | -16.5, -12.0 | **better** |
+| calls, 20 clients | 60 | 1.559 s | 0.779 s | -50.0% | -51.6, -48.3 | **better** |
 | signals, burst to 1 | 60 | 0.768 s | 0.198 s | -74.2% | -75.3, -72.9 | **better** |
 | signals, broadcast to 20 | 60 | 1.751 s | 0.184 s | -89.5% | -90.0, -88.9 | **better** |
-| RTT, 1 connection, p50 | 60 | 148 µs | 135 µs | -9.0% | -10.6, -7.4 | **better** |
-| RTT, 1 connection, p99 | 60 | 297 µs | 278 µs | -6.6% | -10.3, -2.5 | inconclusive* |
-| RTT, 20 connections, p50 | 60 | 1448 µs | 659 µs | -54.5% | -55.8, -53.1 | **better** |
-| RTT, 20 connections, p99 | 60 | 2658 µs | 1465 µs | -44.9% | -48.9, -40.4 | **better** |
+| RTT, 1 client, p50 | 60 | 148 µs | 135 µs | -9.0% | -10.6, -7.4 | **better** |
+| RTT, 1 client, p99 | 60 | 297 µs | 278 µs | -6.6% | -10.3, -2.5 | inconclusive* |
+| RTT, 20 clients, p50 | 60 | 1448 µs | 659 µs | -54.5% | -55.8, -53.1 | **better** |
+| RTT, 20 clients, p99 | 60 | 2658 µs | 1465 µs | -44.9% | -48.9, -40.4 | **better** |
 | delivery to 20, p50 | 60 | 16.0 ms | 2.7 ms | -83.3% | -84.2, -82.2 | **better** |
 | delivery to 20, p99 | 60 | 32.4 ms | 10.7 ms | -67.0% | -70.4, -63.2 | **better** |
 | delivery to 20, whole fan-out | 60 | 0.552 s | 0.064 s | -88.5% | -89.0, -87.8 | **better** |
@@ -289,23 +289,23 @@ makes the difference, as the zruntime build has the p99 of before.
 The signals do not queue up behind the emitter. After this run, a build of the latency client that
 also noted when the emitter had sent its last signal, and the median delay of the signals of each
 quarter of the sequence, ran 12 times against zruntime and after in turn. The emitter sent its 2000
-signals in 52.3 ms against after and 68.8 ms against zruntime, the medians of the 12, and the
-median delays of the four quarters were 2.8, 2.5, 2.5 and 2.7 ms against after, and 3.1, 3.2, 3.2
-and 3.2 ms against zruntime: lower in each quarter, and no higher at the end than at the start. What
-makes the slowest deliveries slower is open. One candidate is the threads of the 20 subscribers, of
-the emitter and of the bus sharing 4 vCPUs within a window that is 24% shorter, so that a subscriber
-that waits for a CPU falls further behind; a machine with more CPUs than threads would tell.
+signals in 52.3 ms against after and 68.8 ms against zruntime, the medians of the 12, and the median
+delays of the four quarters were 2.8, 2.5, 2.5 and 2.7 ms against after, and 3.1, 3.2, 3.2 and 3.2
+ms against zruntime: lower in each quarter, and no higher at the end than at the start. What makes
+the slowest deliveries slower is open. One candidate is the threads of the 20 subscribers, of the
+emitter and of the bus sharing 4 vCPUs within a window that is 24% shorter, so that a subscriber
+that waits for a CPU falls further behind. On the Ryzen 7 7840U, with 16 threads, after delivers the
+slowest signals 39.2% sooner than before at p99 ([the run of
+2026-10-27](2026-10-27-busd-dependency-updates-ryzen-7840u.md)), which is consistent with it.
 
-### One connection
+### One client
 
-On one connection, busd is faster than dbus-broker here, by 12.6% on the calls and 13.7% on the
-median round trip, and before was too, by 7.8 and 8.0%. On the Ryzen 7 7840U it is the other way
-round: with the clients of this run, busd's batched sends (ac6e6fa) took 20.7% longer than
-dbus-broker 37 on the calls of one connection, 0.072 s against 0.060 s, in a run of
-`scripts/compare-batched-sends.sh` at 3a20fff on 2026-10-26, as busd did in the earlier runs there
-(see [the run of 2026-10-25](2026-10-25-busd-batched-sends-subscriber-threads-ryzen-7840u.md)). A
-call on one connection waits for a wake-up at each hop, whose cost differs between a VM and bare
-metal, which likely makes the difference; neither machine speaks for the other there.
+With one client, busd is faster than dbus-broker here, by 12.6% on the calls and 13.7% on the median
+round trip, and before was too, by 7.8 and 8.0%. On the Ryzen 7 7840U it is the other way round:
+after takes 15.2% longer than dbus-broker on the calls of one client, and before 22.6% longer ([the
+run of 2026-10-27](2026-10-27-busd-dependency-updates-ryzen-7840u.md)). A call of one client waits
+for a wake-up at each hop, whose cost differs between a VM and bare metal, which likely makes the
+difference; neither machine speaks for the other there.
 
 ## Reproducing
 
