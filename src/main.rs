@@ -13,11 +13,14 @@
 //! other up: a client sends its next call as soon as the reply to the last one comes, and a
 //! service replies as soon as a call comes. What a phase times is from just before its first
 //! service connects until its last service is gone, connecting included.
+//!
+//! The calls and the replies are built by hand and have no sender, for the bus to set: `src/lib.rs`
+//! says why.
 
 use std::{sync::mpsc, thread, time::Instant};
 
-use serde::{Deserialize, Serialize};
-use serde_bytes::Bytes;
+use dbus_bench::{Caller, Result};
+use zbus::MessageStream;
 use zruntime::mpmc;
 
 /// How many calls each client makes.
@@ -28,33 +31,6 @@ const PAIRS: usize = 20;
 
 /// How many bytes of payload each call carries.
 const PAYLOAD_LEN: usize = 16 * 1024;
-
-/// The path that each service serves its interface at.
-const PATH: &str = "/org/dbus2/benchmark";
-
-/// Anything that goes wrong ends the run, so the errors need no more than their message. They are
-/// `Send`, so that the thread of a service or a client can hand its error over.
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
-
-#[derive(Debug)]
-struct Service;
-
-#[zbus::interface(
-    name = "org.dbus2.benchmark",
-    proxy(default_path = "/org/dbus2/benchmark")
-)]
-impl Service {
-    fn take_byte_array(&self, _bytes: ByteArray<'_>) {}
-}
-
-/// The byte array of a call, borrowed from the message that carries it.
-///
-/// An argument of type `&T`, other than `&str`, is deserialized into a `T` that the method then
-/// borrows, which would copy the array out of the message. A type that holds the reference itself
-/// is deserialized as it is, and as a struct with a single field, it has the D-Bus type of that
-/// field: an array of bytes.
-#[derive(Deserialize, Serialize, zbus::wire::Type)]
-struct ByteArray<'a>(#[serde(borrow)] &'a Bytes);
 
 fn main() -> Result<()> {
     let data = vec![0u8; PAYLOAD_LEN];
@@ -118,19 +94,17 @@ fn hammer(names: &[String], data: &[u8]) -> Result<()> {
 }
 
 /// A service, on a thread of its own, with a connection and a single-threaded runtime of its own:
-/// serves its interface at `name`, says on `ready` whether it could, and goes on serving it until
-/// `stopped` is closed.
+/// owns `name`, says on `ready` whether it could, and goes on replying to the calls of its method
+/// until `stopped` is closed.
 fn serve(name: &str, ready: mpsc::Sender<Result<()>>, stopped: mpmc::Receiver<()>) -> Result<()> {
     zbus::block_on(async {
         // The name is the service's by the time that `build` returns, as it waits for the bus to
         // reply to `RequestName`.
         let connection = zbus::connection::Builder::session()
-            .serve_at(PATH, Service)
             .name(name)
             .build()
             .await;
-        // The connection serves the interface for as long as it is kept.
-        let _connection = match connection {
+        let connection = match connection {
             Ok(connection) => connection,
             Err(e) => {
                 // The thread that waits for the services gives up on the first that fails, with
@@ -140,11 +114,11 @@ fn serve(name: &str, ready: mpsc::Sender<Result<()>>, stopped: mpmc::Receiver<()
                 return Err("the service could not connect".into());
             }
         };
+        // The stream exists before the service is ready, and so before the first call is sent.
+        let calls = MessageStream::from(&connection);
         let _ = ready.send(Ok(()));
-        // As nothing is sent on the channel, this returns only once it is closed.
-        let _ = stopped.recv().await;
 
-        Ok(())
+        dbus_bench::serve(&connection, calls, stopped).await
     })
 }
 
@@ -154,9 +128,9 @@ fn serve(name: &str, ready: mpsc::Sender<Result<()>>, stopped: mpmc::Receiver<()
 fn call(name: &str, data: &[u8]) -> Result<()> {
     zbus::block_on(async {
         let connection = zbus::Connection::session().await?;
-        let proxy = ServiceProxy::new(&connection, name).await?;
+        let mut caller = Caller::new(connection, name)?;
         for _ in 0..CALLS {
-            proxy.take_byte_array(ByteArray(Bytes::new(data))).await?;
+            caller.call(data).await?;
         }
 
         Ok(())

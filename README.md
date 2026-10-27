@@ -3,7 +3,8 @@
 This repository attempts to benchmark the performance of D-Bus brokers. It makes simple method calls
 to its own services, using a single and multiple simultaneous service & client pairs. The service
 and the client of each pair have a connection and a thread of their own, as processes of their own
-would, so that neither holds the other up.
+would, so that neither holds the other up. The clients and the services build their messages
+without a sender, as libdbus, GLib and sd-bus clients do, which leaves the bus to set it.
 
 ## Running the benchmark
 

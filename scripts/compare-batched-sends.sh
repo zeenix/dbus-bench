@@ -12,8 +12,9 @@
 #   each client do. after also passes a reply or an error on only if it answers a call that waits
 #   for one, and sets the sender of a message that a client leaves it out of with
 #   `Message::with_sender`, which copies the bytes of the message with the field appended, rather
-#   than building the message anew. The clients of this repository leave the sender out of their
-#   `Hello` alone, as zbus sets it in every other message.
+#   than building the message anew, as before does. The clients of this repository leave the
+#   sender out of every message that is timed, as libdbus, GLib and sd-bus clients do, so that both
+#   set it for each.
 #
 # after differs from before in zbus and in foldhash, which it adds, alone, as the script checks in
 # their lock files. The clients of this repository build on the zbus and the zruntime that its own
@@ -27,7 +28,7 @@
 #
 # It runs the paired comparisons of results/2026-10-23-busd-zruntime-clock-ryzen-7840u.md between
 # them, with each service and each client on a thread of its own: method calls, signals and
-# latencies, and the connection that 100 proxies share to call one service, then 100 services, each
+# latencies, and the connection that 100 callers share to call one service, then 100 services, each
 # with a client of its own. Every round runs each broker once, in an order shuffled for each round,
 # after WARMUP rounds that the tables leave out. It writes the tables (.md), the runs (.json) and
 # the comparisons in pairs (.stats.md and .stats.json): after against before, before and after
@@ -252,7 +253,7 @@ echo "== latencies: $rounds rounds" >&2
 python3 scripts/compare-latency.py --bench "$bin/latency" --rounds "$rounds" \
     --warmup "$warmup" --seed 33 --out "$out/latency.json" "${meta[@]}" "${brokers[@]}" \
     > "$out/latency.md" || failed+=(latency)
-echo "== 100 proxies sharing a connection, then 100 clients: $shared_rounds rounds" >&2
+echo "== 100 callers sharing a connection, then 100 clients: $shared_rounds rounds" >&2
 DBUS_BENCH_CLIENTS=100 python3 scripts/compare-brokers.py --bench "$bin/shared" \
     --rounds "$shared_rounds" --warmup "$warmup" --seed 34 --out "$out/shared.json" \
     "${meta[@]}" "${brokers[@]}" > "$out/shared.md" || failed+=(shared)

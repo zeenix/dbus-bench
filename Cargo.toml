@@ -8,13 +8,8 @@ default-run = "dbus-bench"
 futures-util = "0.3.30"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_bytes = "0.11.14"
-zbus = { version = "6.0.0", default-features = false, features = [
-    "default-rt",
-    "proxy",
-    "serde_bytes",
-    "service",
-] }
-zruntime = { version = "0.2.1", default-features = false, features = ["lock", "mpmc"] }
+zbus = { version = "6.0.0", default-features = false, features = ["default-rt", "serde_bytes"] }
+zruntime = { version = "0.2.1", default-features = false, features = ["lock", "mpmc", "runtime"] }
 
 # The clients run on what busd builds on: zbus's main branch, which decodes the header of each
 # message that a connection receives in one pass (z-galaxy/zbus#2081), with a cheaper parse of the
