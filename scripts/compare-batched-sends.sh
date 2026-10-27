@@ -1,12 +1,12 @@
 #!/bin/bash
-# Compares busd's main branch with busd checking the messages of its clients, along with
-# dbus-broker and dbus-daemon, as far as they are installed:
+# Compares busd's main branch before and after z-galaxy/busd#391, which has busd check the messages
+# of its clients, along with dbus-broker and dbus-daemon, as far as they are installed:
 #
-# * before: busd's main branch, at 227254e, the merge of z-galaxy/busd#388: on zbus at 50c54bf, the
-#   merge of z-galaxy/zbus#2083, and on zruntime at b3bd01d, the merge of z-galaxy/zruntime#60, as
-#   its lock file has them;
-# * after: the commit that AFTER_REV names, 0413582 by default, the head of z-galaxy/busd#391: on
-#   the same zruntime, and on zbus at 7ad87f4, the head of z-galaxy/zbus#2086. That zbus checks a
+# * before: busd's main branch before z-galaxy/busd#391, at 227254e, the merge of
+#   z-galaxy/busd#388: on zbus at 50c54bf, the merge of z-galaxy/zbus#2083, and on zruntime at
+#   b3bd01d, the merge of z-galaxy/zruntime#60, as its lock file has them;
+# * after: the commit that AFTER_REV names, b0b84a1 by default, the merge of z-galaxy/busd#391: on
+#   the same zruntime, and on zbus at d63e852, the merge of z-galaxy/zbus#2086. That zbus checks a
 #   message that a connection receives as a whole, not only the fields of its header, rejects a
 #   header with a string that doesn't end with a 0 or a field that comes twice, and checks the body
 #   of a message against its signature where the connection asks for it, as after has the
@@ -26,10 +26,12 @@
 #
 # The comparisons that this script ran before, of the ways that busd sends what it forwards to a
 # client (z-galaxy/busd#376, #382 and #383), of busd on later commits of zbus and zruntime, and of
-# z-galaxy/busd#391 at 50bf523, before it set senders with `Message::with_sender`, and at fd577a2,
-# on zbus 8cb16a2, before zbus rejected headers with unended strings or repeated fields, are those
-# of its commits, or of compare-dependency-updates.sh's, that the results of 2026-10-24 to
-# 2026-10-27 name.
+# z-galaxy/busd#391 at 50bf523, before it set senders with `Message::with_sender`, at fd577a2, on
+# zbus 8cb16a2, before zbus rejected headers with unended strings or repeated fields, and at
+# 0413582, on zbus 7ad87f4 of zeenix/zbus, are those of its commits, or of
+# compare-dependency-updates.sh's, that the results of 2026-10-24 to 2026-10-27 name. 0413582 and
+# b0b84a1 have the same tree but for the commit of zbus that they build on, and 7ad87f4 and d63e852
+# have the same tree.
 #
 # It runs the paired comparisons of results/2026-10-23-busd-zruntime-clock-ryzen-7840u.md between
 # them, with each service and each client on a thread of its own: method calls, signals and
@@ -86,9 +88,9 @@ warmup=${WARMUP:-3}
 bench=$(cd "$(dirname "$0")/.." && pwd)
 busd=$checkout/z-galaxy/busd
 
-# The commits measured: busd's main branch, and busd checking the messages of its clients.
+# The commits measured: busd's main branch before and after it checked the messages of its clients.
 before_rev=227254e8bf912ff82f1f6852f4dfe5a98062eb6e
-after_rev=${AFTER_REV:-0413582d079f84e695671f4630c535fe6f00d09e}
+after_rev=${AFTER_REV:-b0b84a1c77ad6189fc19b15c3c2b4627512c85d9}
 
 # Makes sure that the repository $1 has the commit $4, by fetching it from $2 if it lacks it: by its
 # hash, which reaches a commit that the branch $3 no longer has, as a rebase of the branch leaves
@@ -167,7 +169,8 @@ leave_bodies_unchecked() {
 }
 
 have "$busd" https://github.com/z-galaxy/busd main "$before_rev"
-# The after commit is on z-galaxy/busd once it merges it from a branch of zeenix/busd.
+# The after commit is on z-galaxy/busd, which merged z-galaxy/busd#391 from a branch of
+# zeenix/busd, on which the commits of that pull request that it didn't merge are.
 git -C "$busd" cat-file -e "$after_rev^{commit}" 2>/dev/null ||
     git -C "$busd" fetch -q https://github.com/z-galaxy/busd "$after_rev" 2>/dev/null ||
     have "$busd" https://github.com/zeenix/busd ccr-45bb0e6e-ik12zo "$after_rev"
