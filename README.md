@@ -75,10 +75,10 @@ have held every broker to about the same timings.
 **Note**: If you run the benchmark on your machine, make sure that `busd` is built in release mode
 (`cargo run --release` if you build+run it yourself from the source).
 
-1: Actually, busd's main branch at d69f900 with zbus and zruntime moved to their latest commits,
-50c54bf and b3bd01d, as f415bfd of zeenix/busd pins them, which busd's main branch doesn't have yet:
-zbus decodes the header of each message in one pass there, and zruntime keeps the socket of a busy
-client watched until its task has run.
+1: Actually, the git main branch as of z-galaxy/busd#388, which builds on the latest commits of
+zbus (50c54bf), which decodes the header of each message in one pass, and of zruntime (b3bd01d),
+which keeps the socket of a busy client watched until its task has run. It was measured from the
+commit of that pull request, f415bfd.
 
 [dbus-broker]: https://github.com/bus1/dbus-broker
 [dbus-daemon]: https://gitlab.freedesktop.org/dbus/dbus

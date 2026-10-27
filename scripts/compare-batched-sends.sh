@@ -8,10 +8,11 @@
 #   z-galaxy/zruntime#60, which keeps the socket of a client that a wait found readable watched
 #   until the task that the wait woke has run, rather than letting go of it and watching it again
 #   for each message where many clients are busy;
-# * after: the commit that AFTER_REV names, f415bfd of zeenix/busd by default, which is d69f900 on
-#   that zruntime and on zbus at 50c54bf, the merge of z-galaxy/zbus#2083, which decodes the header
-#   of each message that a connection receives in one pass (z-galaxy/zbus#2081), with a cheaper
-#   parse of the signature of its body (z-galaxy/zbus#2083).
+# * after: the commit that AFTER_REV names, f415bfd by default, which z-galaxy/busd#388 merged into
+#   busd's main branch: d69f900 on that zruntime and on zbus at 50c54bf, the merge of
+#   z-galaxy/zbus#2083, which decodes the header of each message that a connection receives in one
+#   pass (z-galaxy/zbus#2081), with a cheaper parse of the signature of its body
+#   (z-galaxy/zbus#2083).
 #
 # zruntime differs from before in zruntime alone, and after from zruntime in zbus alone, as the
 # script checks in their lock files. The clients of this repository build on the zbus and the
@@ -147,7 +148,7 @@ move_zruntime() {
 }
 
 have "$busd" https://github.com/z-galaxy/busd main "$before_rev"
-# The after commit is on a branch of zeenix/busd, and on z-galaxy/busd once that is merged.
+# The after commit is on z-galaxy/busd, which merged it from a branch of zeenix/busd.
 git -C "$busd" cat-file -e "$after_rev^{commit}" 2>/dev/null ||
     git -C "$busd" fetch -q https://github.com/z-galaxy/busd "$after_rev" 2>/dev/null ||
     have "$busd" https://github.com/zeenix/busd ccr-e19c80ff-z9v97e "$after_rev"
