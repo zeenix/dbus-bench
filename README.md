@@ -31,7 +31,9 @@ them. `scripts/pack-results.sh` packs the raw results of a run of the compare sc
 
 Here are the results obtained on my machine (AMD Ryzen 7 7840U w/ 8 cores & 16 threads, 64 GB RAM,
 Fedora 44), as the medians of 60 rounds of the comparison that `scripts/compare-batched-sends.sh`
-runs, on 2026-10-27, each of which runs the benchmarks once against every broker.
+runs, on 2026-10-27, each of which runs the benchmarks once against every broker. They were measured
+with the clients of then, which set the sender of each message, as zbus does, before 8f59742 had
+them leave it out.
 
 Method calls, from the benchmark above: 1000 calls with 16 KiB of data each, by one client to its
 service, then by each of 20 clients to a service of its own, all at once:
