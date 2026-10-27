@@ -1,44 +1,45 @@
 #!/bin/bash
-# Compares the builds of busd that differ in how they send what they forward to a client, along
-# with dbus-broker and dbus-daemon, as far as they are installed:
+# Compares busd on the commits of zbus and zruntime that its main branch pins with busd on later
+# ones, along with dbus-broker and dbus-daemon, as far as they are installed:
 #
-# * queue: busd with a queue for each client (z-galaxy/busd#376), and a task of the client's own
-#   that writes the queue to the client's socket, a message at a time;
-# * baseline: busd's main branch, which forwards the messages of each peer one at a time and writes
-#   each of them to a client with a system call of its own, within a time limit;
-# * batched: busd that forwards the messages of each peer in batches, of those that are there
-#   already, and writes those of a batch that go to a client in one go, with several small messages
-#   in each system call, through `Connection::send_all` of zbus (z-galaxy/zbus#2078). It is the
-#   commit that BATCHED_REV names, ac6e6fa of zeenix/busd by default, an earlier version of
-#   z-galaxy/busd#383, which builds on zbus from the branch of z-galaxy/zbus#2079;
-# * batched-before: the commit that BEFORE_REV names, 4f346a3 by default, which forwards in batches
-#   as batched does, on an earlier commit of that zbus, which ended each write before the message
-#   that would take it past 16 KiB, rather than with it, so that a batch that went past 16 KiB took
-#   two writes. An empty BEFORE_REV leaves it out.
+# * before: busd's main branch, at d69f900, as its lock file has it: on zbus at 73504ba, the merge
+#   of z-galaxy/zbus#2079, and on zruntime at 99e2ebd, the merge of z-galaxy/zruntime#58;
+# * zruntime: the same commit of busd, on the zruntime of after: b3bd01d, the merge of
+#   z-galaxy/zruntime#60, which keeps the socket of a client that a wait found readable watched
+#   until the task that the wait woke has run, rather than letting go of it and watching it again
+#   for each message where many clients are busy;
+# * after: the commit that AFTER_REV names, f415bfd of zeenix/busd by default, which is d69f900 on
+#   that zruntime and on zbus at 50c54bf, the merge of z-galaxy/zbus#2083, which decodes the header
+#   of each message that a connection receives in one pass (z-galaxy/zbus#2081), with a cheaper
+#   parse of the signature of its body (z-galaxy/zbus#2083).
 #
-# All of them run on the commit of zruntime that busd's main branch pins: baseline and the batched
-# builds as their lock files have it, and queue through a patch of the zruntime that its lock file
-# names.
+# zruntime differs from before in zruntime alone, and after from zruntime in zbus alone, as the
+# script checks in their lock files. The clients of this repository build on the zbus and the
+# zruntime of after, as its lock file has them, whichever broker they run against.
+#
+# The comparisons that this script ran before, of the ways that busd sends what it forwards to a
+# client (z-galaxy/busd#376, #382 and #383), are those of its commits that the results of 2026-10-24
+# and 2026-10-25 name.
 #
 # It runs the paired comparisons of results/2026-10-23-busd-zruntime-clock-ryzen-7840u.md between
-# them: method calls, signals and latencies, with the clients on zbus 6, and the connection that 100
-# proxies share to call one service, then 100 services, each with a client of its own. Every round
-# runs each broker once, in an order shuffled for each round, after WARMUP rounds that the tables
-# leave out. It writes the tables (.md), the runs (.json) and the comparisons in pairs (.stats.md
-# and .stats.json): batched against baseline, queue and batched-before, baseline against queue, and
-# dbus-broker and dbus-daemon against baseline and batched.
+# them, with each service and each client on a thread of its own: method calls, signals and
+# latencies, and the connection that 100 proxies share to call one service, then 100 services, each
+# with a client of its own. Every round runs each broker once, in an order shuffled for each round,
+# after WARMUP rounds that the tables leave out. It writes the tables (.md), the runs (.json) and
+# the comparisons in pairs (.stats.md and .stats.json): after and zruntime against before, after
+# against zruntime, before and after against dbus-broker, and after against dbus-daemon.
 #
 # It expects a checkout of busd under $CHECKOUT (default: ~/checkout), laid out as on GitHub:
 # $CHECKOUT/z-galaxy/busd. That checkout, and the one of dbus-bench that this script is in, are left
-# as they are, apart from fetching the commits measured, by their hashes, if they lack them: queue
-# and baseline from z-galaxy/busd, and the batched builds from zeenix/busd. A short BATCHED_REV or
-# BEFORE_REV, which a fetch cannot name, is looked for on the ccr-fd1ce738-0xtuf0 branch: name a
-# commit that the branch no longer has in full. Each build of busd is made from an export of its
-# commit, under $WORK (default: /tmp/batched-sends-bench), and is reused by the next run. The
-# clients of this repository are built in its checkout. The results go to
-# $WORK/batched-sends-results-COMMIT, where COMMIT is the short hash of the batched commit: each run
-# empties it, and writes its results there, along with environment.txt, which notes the versions
-# that the tables do not name. The archive is $WORK/batched-sends-results-COMMIT.tar.gz.
+# as they are, apart from fetching the commits measured, by their hashes, if they lack them: before
+# from z-galaxy/busd, and after from z-galaxy/busd or else zeenix/busd. A short AFTER_REV, which a
+# fetch cannot name, is looked for on the ccr-e19c80ff-z9v97e branch: name a commit that the branch
+# no longer has in full. Each build of busd is made from an export of its commit, under $WORK
+# (default: /tmp/batched-sends-bench), and is reused by the next run. The clients of this repository
+# are built in its checkout. The results go to $WORK/batched-sends-results-COMMIT, where COMMIT is
+# the short hash of the after commit: each run empties it, and writes its results there, along with
+# environment.txt, which notes the versions that the tables do not name. The archive is
+# $WORK/batched-sends-results-COMMIT.tar.gz.
 #
 # Usage: scripts/compare-batched-sends.sh
 #
@@ -55,7 +56,8 @@
 set -euo pipefail
 
 if [ $# -gt 0 ]; then
-    echo "usage: scripts/compare-batched-sends.sh (the environment sets the rest: see the top)" >&2
+    echo "usage: scripts/compare-batched-sends.sh (the environment sets the rest:" \
+        "see the top)" >&2
     exit 2
 fi
 
@@ -72,15 +74,9 @@ warmup=${WARMUP:-3}
 bench=$(cd "$(dirname "$0")/.." && pwd)
 busd=$checkout/z-galaxy/busd
 
-# The commits measured: busd's main branch with the queue for each client; busd's main branch since,
-# with the time limit of 100 ms on each send to a client (z-galaxy/busd#382); busd that forwards in
-# batches; and, unless BEFORE_REV is empty, an earlier commit of it. And the commit of zruntime that
-# all but the first pin, which queue is built on too.
-queue_rev=0c52e9c60bddc518480ff68da18f3c2ec8cc3f3c
-baseline_rev=0b89e3a5b746dd7e739706e4ab4e6b15ec89413a
-batched_rev=${BATCHED_REV:-ac6e6fa16f5b0b63cce856dc618ca2328c51e713}
-before_rev=${BEFORE_REV-4f346a36a23efe3a88b9539ff1130c55c660be70}
-zruntime_rev=99e2ebd807723177bec5d7c5216e48448c3a91c9
+# The commits measured: busd's main branch, and busd on the later commits of zbus and zruntime.
+before_rev=d69f900665779d22334c733ee8e84154345f5a2f
+after_rev=${AFTER_REV:-f415bfdd57f476a314bbed5afa200681a58f3679}
 
 # Makes sure that the repository $1 has the commit $4, by fetching it from $2 if it lacks it: by its
 # hash, which reaches a commit that the branch $3 no longer has, as a rebase of the branch leaves
@@ -131,35 +127,43 @@ export_rev() {
     mv "$dir.new" "$dir"
 }
 
-# Has the export of busd in the current directory build on the commit $1 of zruntime, rather than
-# on the release that its lock file names. The patch goes in the export's Cargo configuration, and
-# zruntime, and only zruntime, is moved off the release in the lock file, so that the build can
-# stay locked.
-use_zruntime() {
-    mkdir -p .cargo
-    printf '[patch.crates-io]\nzruntime = { git = "%s", rev = "%s" }\n' \
-        https://github.com/z-galaxy/zruntime "$1" >> .cargo/config.toml
-    cargo update -q -p zruntime
+# The commit of git that the lock file in the current directory has the package $1 at, if any.
+locked_rev() {
+    sed -n "/^name = \"$1\"\$/,/^\$/s/^source = \"git+.*#\([0-9a-f]*\)\"\$/\1/p" Cargo.lock
 }
 
-have "$busd" https://github.com/z-galaxy/busd main "$queue_rev"
-have "$busd" https://github.com/z-galaxy/busd main "$baseline_rev"
-have "$busd" https://github.com/zeenix/busd ccr-fd1ce738-0xtuf0 "$batched_rev"
-# BATCHED_REV and BEFORE_REV may be short hashes: the results name the full ones.
-batched_rev=$(git -C "$busd" rev-parse --verify "$batched_rev^{commit}")
-builds=(queue baseline batched)
-if [ -n "$before_rev" ]; then
-    have "$busd" https://github.com/zeenix/busd ccr-fd1ce738-0xtuf0 "$before_rev"
-    before_rev=$(git -C "$busd" rev-parse --verify "$before_rev^{commit}")
-    builds+=(batched-before)
-fi
+# Has the export of busd in the current directory build on the commit $1 of zruntime, rather than
+# on the one that it pins, and fails unless zbus stays at the commit $2. The patch of crates.io's
+# zruntime in the export's manifest names the commit, and zruntime, and only zruntime, moves in the
+# lock file, so that the build can stay locked.
+move_zruntime() {
+    sed -i "/^\[patch\.crates-io\.zruntime\]\$/,/^rev = /s/^rev = .*/rev = \"$1\"/" Cargo.toml
+    cargo update -q -p zruntime
+    if [ "$(locked_rev zruntime)" != "$1" ] || [ "$(locked_rev zbus)" != "$2" ]; then
+        echo "The export of busd was to build on zruntime at $1 and zbus at $2, but its lock" \
+            "file has zruntime at $(locked_rev zruntime) and zbus at $(locked_rev zbus)." >&2
+        return 1
+    fi
+}
 
-export_rev "$busd" "$queue_rev" "$work/busd-queue" use_zruntime "$zruntime_rev"
-export_rev "$busd" "$baseline_rev" "$work/busd-baseline"
-export_rev "$busd" "$batched_rev" "$work/busd-batched"
-if [ -n "$before_rev" ]; then
-    export_rev "$busd" "$before_rev" "$work/busd-batched-before"
-fi
+have "$busd" https://github.com/z-galaxy/busd main "$before_rev"
+# The after commit is on a branch of zeenix/busd, and on z-galaxy/busd once that is merged.
+git -C "$busd" cat-file -e "$after_rev^{commit}" 2>/dev/null ||
+    git -C "$busd" fetch -q https://github.com/z-galaxy/busd "$after_rev" 2>/dev/null ||
+    have "$busd" https://github.com/zeenix/busd ccr-e19c80ff-z9v97e "$after_rev"
+# AFTER_REV may be a short hash: the results name the full one.
+after_rev=$(git -C "$busd" rev-parse --verify "$after_rev^{commit}")
+
+export_rev "$busd" "$before_rev" "$work/busd-before"
+export_rev "$busd" "$after_rev" "$work/busd-after"
+# What before and after build on, as their lock files have it.
+zbus_before=$(cd "$work/busd-before" && locked_rev zbus)
+zruntime_before=$(cd "$work/busd-before" && locked_rev zruntime)
+zbus_after=$(cd "$work/busd-after" && locked_rev zbus)
+zruntime_after=$(cd "$work/busd-after" && locked_rev zruntime)
+export_rev "$busd" "$before_rev" "$work/busd-zruntime" move_zruntime "$zruntime_after" \
+    "$zbus_before"
+builds=(before zruntime after)
 for build in "${builds[@]}"; do
     (cd "$work/busd-$build" && cargo build --release --locked)
 done
@@ -177,7 +181,7 @@ done
 
 # What an earlier run of the same commit left in the results would end up in the archive, so each
 # run starts afresh.
-out=$work/batched-sends-results-${batched_rev:0:7}
+out=$work/batched-sends-results-${after_rev:0:7}
 archive=$out.tar.gz
 rm -rf "$out"
 mkdir -p "$out"
@@ -189,6 +193,8 @@ mkdir -p "$out"
     echo "rustc: $(first_line rustc --version)"
     echo "cargo: $(first_line cargo --version)"
     echo "dbus-bench: $(first_line git -C "$bench" describe --always --dirty --abbrev=40)"
+    echo "clients: zbus $(cd "$bench" && locked_rev zbus), zruntime $(cd "$bench" &&
+        locked_rev zruntime)"
     echo "dbus-broker: $(first_line dbus-broker --version)"
     echo "dbus-daemon: $(first_line dbus-daemon --version)"
 } > "$out/environment.txt"
@@ -196,19 +202,14 @@ mkdir -p "$out"
 # busd logs why it disconnects a client at its debug level, and nothing at that level while it
 # forwards messages, so the log that a failed run shows names the cause, at no cost to the others.
 brokers=(
-    --broker queue "RUST_LOG=busd=debug $bin/busd-queue --address {address}"
-    --broker baseline "RUST_LOG=busd=debug $bin/busd-baseline --address {address}"
-    --broker batched "RUST_LOG=busd=debug $bin/busd-batched --address {address}"
+    --broker before "RUST_LOG=busd=debug $bin/busd-before --address {address}"
+    --broker zruntime "RUST_LOG=busd=debug $bin/busd-zruntime --address {address}"
+    --broker after "RUST_LOG=busd=debug $bin/busd-after --address {address}"
 )
-meta=(--meta "rustc=$(first_line rustc --version)" --meta "queue=$queue_rev"
-    --meta "baseline=$baseline_rev" --meta "batched=$batched_rev" --meta "zruntime=$zruntime_rev")
-pairs=(baseline:batched queue:batched queue:baseline)
-if [ -n "$before_rev" ]; then
-    brokers+=(--broker batched-before
-        "RUST_LOG=busd=debug $bin/busd-batched-before --address {address}")
-    meta+=(--meta "batched-before=$before_rev")
-    pairs+=(batched-before:batched)
-fi
+meta=(--meta "rustc=$(first_line rustc --version)" --meta "before=$before_rev"
+    --meta "after=$after_rev" --meta "zbus-before=$zbus_before" --meta "zbus-after=$zbus_after"
+    --meta "zruntime-before=$zruntime_before" --meta "zruntime-after=$zruntime_after")
+pairs=(before:after before:zruntime zruntime:after)
 # dbus-broker runs only under its launcher, which takes its socket from systemd's socket activation
 # and connects to the bus that $DBUS_SESSION_BUS_ADDRESS names, the one it launches here rather
 # than the desktop's: see scripts/compare-brokers.py.
@@ -217,7 +218,7 @@ if command -v dbus-broker-launch > /dev/null && command -v systemd-socket-activa
     brokers+=(--broker dbus-broker
         "systemd-socket-activate -E DBUS_SESSION_BUS_ADDRESS={address} -l {path} $launch")
     meta+=(--meta "dbus-broker=$(first_line dbus-broker --version)")
-    pairs+=(dbus-broker:baseline dbus-broker:batched)
+    pairs+=(dbus-broker:before dbus-broker:after)
 else
     echo "dbus-broker-launch or systemd-socket-activate is not installed: leaving dbus-broker" \
         "out of the comparisons." >&2
@@ -225,7 +226,7 @@ fi
 if command -v dbus-daemon > /dev/null; then
     brokers+=(--broker dbus-daemon "dbus-daemon --session --nofork --address={address}")
     meta+=(--meta "dbus-daemon=$(first_line dbus-daemon --version)")
-    pairs+=(dbus-daemon:baseline dbus-daemon:batched)
+    pairs+=(dbus-daemon:after)
 else
     echo "dbus-daemon is not installed: leaving it out of the comparisons." >&2
 fi
@@ -234,7 +235,7 @@ fi
 # What they did write is packed up at the end.
 failed=()
 cd "$bench"
-echo "== method calls (the benchmark, on zbus 6): $rounds rounds" >&2
+echo "== method calls (the benchmark): $rounds rounds" >&2
 python3 scripts/compare-brokers.py --bench "$bin/dbus-bench" --rounds "$rounds" \
     --warmup "$warmup" --seed 31 --out "$out/calls.json" "${meta[@]}" "${brokers[@]}" \
     > "$out/calls.md" || failed+=(calls)
@@ -246,8 +247,7 @@ echo "== latencies: $rounds rounds" >&2
 python3 scripts/compare-latency.py --bench "$bin/latency" --rounds "$rounds" \
     --warmup "$warmup" --seed 33 --out "$out/latency.json" "${meta[@]}" "${brokers[@]}" \
     > "$out/latency.md" || failed+=(latency)
-echo "== 100 proxies sharing a connection, then 100 clients (zbus 6):" \
-    "$shared_rounds rounds" >&2
+echo "== 100 proxies sharing a connection, then 100 clients: $shared_rounds rounds" >&2
 DBUS_BENCH_CLIENTS=100 python3 scripts/compare-brokers.py --bench "$bin/shared" \
     --rounds "$shared_rounds" --warmup "$warmup" --seed 34 --out "$out/shared.json" \
     "${meta[@]}" "${brokers[@]}" > "$out/shared.md" || failed+=(shared)
@@ -257,7 +257,7 @@ for workload in calls signals latency shared; do
     for pair in "${pairs[@]}"; do
         base=${pair%:*} cand=${pair#*:}
         name=$workload-$cand
-        [ "$base" = baseline ] || name=$workload-$cand-vs-$base
+        [ "$base" = before ] || name=$workload-$cand-vs-$base
         python3 scripts/paired-stats.py "$out/$workload.json" --baseline "$base" \
             --candidate "$cand" --json "$out/$name.stats.json" > "$out/$name.stats.md" ||
             failed+=("the comparison of $cand against $base on $workload")
