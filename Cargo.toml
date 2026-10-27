@@ -8,13 +8,24 @@ default-run = "dbus-bench"
 futures-util = "0.3.30"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_bytes = "0.11.14"
-tokio = { version = "1.54.0", default-features = false, features = [
-    "rt",
-    "macros",
-] }
 zbus = { version = "6.0.0", default-features = false, features = [
+    "default-rt",
     "proxy",
     "serde_bytes",
     "service",
-    "tokio",
 ] }
+zruntime = { version = "0.2.1", default-features = false, features = ["lock", "mpmc"] }
+
+# The clients run on what busd builds on: zbus's main branch, which decodes the header of each
+# message that a connection receives in one pass (z-galaxy/zbus#2081), with a cheaper parse of the
+# signature of its body (z-galaxy/zbus#2083), and zruntime's, which keeps a socket that a wait found
+# readable watched until the task that the wait woke has run (z-galaxy/zruntime#60). No release has
+# these yet. Patching crates.io's crates, rather than depending on them from git, has zbus build on
+# that zruntime too: the clients and zbus must share one runtime.
+[patch.crates-io.zbus]
+git = "https://github.com/z-galaxy/zbus"
+rev = "50c54bfdc2b1fbb66d555d41a0cfb3063c014566"
+
+[patch.crates-io.zruntime]
+git = "https://github.com/z-galaxy/zruntime"
+rev = "b3bd01d8fc1827c690d2525a157694afd030ea4b"

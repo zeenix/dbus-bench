@@ -4,10 +4,10 @@
 //! like theirs, and prints the distributions of those times as one JSON object on the standard
 //! output, and nothing else there:
 //!
-//! - `single_rtt`: the round trips of `SINGLE_CALLS` calls, one after the other, from a service
-//!   to itself through the bus, as in `main.rs`, with a small payload.
-//! - `multi_rtt`: the round trips of `MULTI_CALLS` calls on each of `MULTI_CLIENTS` such
-//!   services at once, with the payload of `main.rs`.
+//! - `single_rtt`: the round trips of `SINGLE_CALLS` calls, one after the other, from a client to
+//!   a service through the bus, as in `main.rs`, with a small payload.
+//! - `multi_rtt`: the round trips of `MULTI_CALLS` calls from each of `MULTI_CLIENTS` such
+//!   clients at once, each to a service of its own, with the payload of `main.rs`.
 //! - `fanout_delivery`: how long each of `FANOUT_SIGNALS` signals, which one connection
 //!   broadcasts back to back, takes to reach each of `FANOUT_SUBSCRIBERS` subscribers, as in
 //!   `fanout.rs`: from just before the emitter builds it until the subscriber has taken it off
@@ -21,25 +21,26 @@
 //! microseconds. A percentile is the nearest-rank one: the sample at the rank that the fraction
 //! of the samples ends at, rounded up, counting from the smallest.
 //!
-//! The clients and the services of the round trips run on one single-threaded runtime, like
-//! `main.rs` does, so what is timed includes the time that this process takes to get round to a
-//! message, as well as the time that the broker takes. Each subscriber of `fanout_delivery` runs
-//! on a thread of its own instead, with a runtime of its own, as a process of its own would: it
-//! takes each signal off its socket as soon as the broker has written it there, rather than when
-//! one thread for all of them gets round to it, so that how long the signals wait is the broker's
-//! doing. The emitter has the main thread to itself. The scenarios fail on a failed call, and on a
-//! signal that is lost or arrives out of order, and the process exits without printing the object.
+//! Each service and each client of the round trips, and each subscriber of `fanout_delivery`, runs
+//! on a thread of its own, with a connection and a single-threaded runtime of its own, as a
+//! process of its own would, like those of `main.rs` and `fanout.rs`: it takes each message off its
+//! socket as soon as the broker has written it there, rather than when one thread for all of them
+//! gets round to it, so that how long the messages wait is the broker's doing. The emitter has the
+//! main thread to itself. The scenarios fail on a failed call, and on a signal that is lost or
+//! arrives out of order, and the process exits without printing the object.
 
 use std::{
     num::NonZeroUsize,
     sync::mpsc,
+    thread,
     time::{Duration, Instant},
 };
 
-use futures_util::{future::try_join_all, TryStreamExt};
+use futures_util::TryStreamExt;
 use serde::{Deserialize, Serialize};
 use serde_bytes::Bytes;
 use zbus::{message::Type, Connection, MatchRule, MessageStream};
+use zruntime::{lock::Barrier, mpmc};
 
 /// How many calls `single_rtt` makes.
 const SINGLE_CALLS: usize = 5_000;
@@ -112,11 +113,10 @@ impl Service {
 #[derive(Deserialize, Serialize, zbus::wire::Type)]
 struct ByteArray<'a>(#[serde(borrow)] &'a Bytes);
 
-#[tokio::main(flavor = "current_thread")]
-async fn main() -> Result<()> {
-    let single_rtt = single_rtt().await?;
-    let multi_rtt = multi_rtt().await?;
-    let fanout_delivery = fanout_delivery().await?;
+fn main() -> Result<()> {
+    let single_rtt = single_rtt()?;
+    let multi_rtt = multi_rtt()?;
+    let fanout_delivery = zbus::block_on(fanout_delivery())?;
 
     println!(
         "{{\"single_rtt\": {}, \"multi_rtt\": {}, \"fanout_delivery\": {}}}",
@@ -128,31 +128,85 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-/// The scenario `single_rtt`: calls from one service to itself, one after the other.
-async fn single_rtt() -> Result<Stats> {
+/// The scenario `single_rtt`: calls from one client to its service, one after the other.
+fn single_rtt() -> Result<Stats> {
     let _watchdog = Watchdog::start("single_rtt");
     let data = vec![0u8; SINGLE_PAYLOAD_LEN];
-    let pair = Pair::connect("org.dbus2.benchmark.SingleClient".to_string()).await?;
 
-    let before = Instant::now();
-    let round_trips = pair.call(&data, SINGLE_CALLS).await?;
-
-    Ok(Stats::new(round_trips, before.elapsed()))
+    round_trips(
+        &["org.dbus2.benchmark.SingleClient".to_string()],
+        &data,
+        SINGLE_CALLS,
+    )
 }
 
-/// The scenario `multi_rtt`: calls from many services to themselves at the same time.
-async fn multi_rtt() -> Result<Stats> {
+/// The scenario `multi_rtt`: calls from many clients, each to a service of its own, at the same
+/// time.
+fn multi_rtt() -> Result<Stats> {
     let _watchdog = Watchdog::start("multi_rtt");
     let data = vec![0u8; MULTI_PAYLOAD_LEN];
-    let pairs = try_join_all(
-        (0..MULTI_CLIENTS).map(|i| Pair::connect(format!("org.dbus2.benchmark.MultiClient{i}"))),
-    )
-    .await?;
+    let names: Vec<_> = (0..MULTI_CLIENTS)
+        .map(|i| format!("org.dbus2.benchmark.MultiClient{i}"))
+        .collect();
 
-    let before = Instant::now();
-    let round_trips = try_join_all(pairs.iter().map(|pair| pair.call(&data, MULTI_CALLS))).await?;
+    round_trips(&names, &data, MULTI_CALLS)
+}
 
-    Ok(Stats::new(round_trips.concat(), before.elapsed()))
+/// Runs a service at each of `names`, and a client that calls it `calls` times, one call after the
+/// other, with `data` as the byte array, and times the calls.
+///
+/// The clients start calling together, once all of them have connected and all the services own
+/// their names, and the services stop once the clients are done, or one of them failed. How long
+/// the scenario took is from when the first client started calling until the last reply came.
+fn round_trips(names: &[String], data: &[u8], calls: usize) -> Result<Stats> {
+    let start = Barrier::new(names.len());
+
+    thread::scope(|scope| {
+        // Nothing is sent on this channel: dropping the sender, whichever way the scope is left,
+        // closes it, which is what stops the services.
+        let (stop, stopped) = mpmc::unbounded::<()>();
+        let (ready, readiness) = mpsc::channel();
+        let services: Vec<_> = names
+            .iter()
+            .map(|name| {
+                let ready = ready.clone();
+                let stopped = stopped.clone();
+                scope.spawn(move || serve(name, ready, stopped))
+            })
+            .collect();
+        drop(ready);
+        for _ in 0..services.len() {
+            readiness
+                .recv()
+                .map_err(|_| "a service ended before it was ready")??;
+        }
+
+        let start = &start;
+        let clients: Vec<_> = names
+            .iter()
+            .map(|name| scope.spawn(move || client(name, data, calls, start)))
+            .collect();
+        let mut done = Vec::with_capacity(clients.len());
+        for client in clients {
+            done.push(client.join().map_err(|_| "a client panicked")??);
+        }
+        drop(stop);
+        for service in services {
+            service.join().map_err(|_| "a service panicked")??;
+        }
+
+        let started = done.iter().map(|calls| calls.started).min();
+        let finished = done.iter().map(|calls| calls.finished).max();
+        let (Some(started), Some(finished)) = (started, finished) else {
+            return Err("there was no client".into());
+        };
+        let round_trips = done.into_iter().flat_map(|calls| calls.round_trips);
+
+        Ok(Stats::new(
+            round_trips.collect(),
+            finished.duration_since(started),
+        ))
+    })
 }
 
 /// The scenario `fanout_delivery`: signals from one emitter to many subscribers.
@@ -213,65 +267,97 @@ fn subscriber(
     queue: NonZeroUsize,
     subscribed: mpsc::Sender<Result<()>>,
 ) -> Result<Vec<(u64, Instant)>> {
-    let subscription = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .map_err(Into::into)
-        .and_then(|runtime| {
-            let stream = runtime.block_on(subscribe(&rule, queue))?;
+    zbus::block_on(async {
+        let mut stream = match subscribe(&rule, queue).await {
+            Ok(stream) => stream,
+            Err(e) => {
+                // The thread that waits for the subscribers gives up on the first that fails, with
+                // its error.
+                let _ = subscribed.send(Err(e));
 
-            Ok((runtime, stream))
-        });
-    let (runtime, mut stream) = match subscription {
-        Ok(subscription) => subscription,
-        Err(e) => {
-            // The thread that waits for the subscribers gives up on the first that fails, with
-            // its error.
-            let _ = subscribed.send(Err(e));
+                return Err("the subscriber could not subscribe".into());
+            }
+        };
+        let _ = subscribed.send(Ok(()));
 
-            return Err("the subscriber could not subscribe".into());
-        }
-    };
-    let _ = subscribed.send(Ok(()));
-
-    runtime.block_on(receive(&mut stream))
+        receive(&mut stream).await
+    })
 }
 
-/// A service that is at a well-known name of its own, and a proxy to it on its connection, so
-/// that its calls to itself go through the bus, as those of `main.rs` do.
-struct Pair {
-    /// The proxy, which is made from the connection and keeps it open.
-    proxy: ServiceProxy<'static>,
-}
-
-impl Pair {
-    /// Connects a service that serves its interface at `name`, and a proxy to it.
-    async fn connect(name: String) -> Result<Self> {
-        let conn = zbus::connection::Builder::session()
+/// A service of the round trips, on a thread of its own, with a connection and a single-threaded
+/// runtime of its own: serves its interface at `name`, says on `ready` whether it could, and goes on
+/// serving it until `stopped` is closed.
+fn serve(name: &str, ready: mpsc::Sender<Result<()>>, stopped: mpmc::Receiver<()>) -> Result<()> {
+    zbus::block_on(async {
+        // The name is the service's by the time that `build` returns, as it waits for the bus to
+        // reply to `RequestName`.
+        let connection = zbus::connection::Builder::session()
             .serve_at(PATH, Service)
-            .name(name.clone())
+            .name(name)
             .build()
-            .await?;
-        let proxy = ServiceProxy::new(&conn, name).await?;
+            .await;
+        // The connection serves the interface for as long as it is kept.
+        let _connection = match connection {
+            Ok(connection) => connection,
+            Err(e) => {
+                // The thread that waits for the services gives up on the first that fails, with
+                // its error.
+                let _ = ready.send(Err(e.into()));
 
-        Ok(Self { proxy })
-    }
+                return Err("the service could not connect".into());
+            }
+        };
+        let _ = ready.send(Ok(()));
+        // As nothing is sent on the channel, this returns only once it is closed.
+        let _ = stopped.recv().await;
 
-    /// Calls the service `calls` times, one call after the other, with `data` as the byte array.
-    ///
-    /// Returns how long each call took, from sending it until the reply came, in nanoseconds.
-    async fn call(&self, data: &[u8], calls: usize) -> Result<Vec<u64>> {
+        Ok(())
+    })
+}
+
+/// A client of the round trips, on a thread of its own, with a connection and a single-threaded
+/// runtime of its own: connects, waits at `start` until the other clients have too, and calls the
+/// service at `name` `calls` times, one call after the other, with `data` as the byte array.
+fn client(name: &str, data: &[u8], calls: usize, start: &Barrier) -> Result<Calls> {
+    zbus::block_on(async {
+        let proxy = connect(name).await;
+        // It arrives whether it connected or not, so that the others do not wait for good for one
+        // that failed.
+        start.wait().await;
+        let proxy = proxy?;
+
+        let started = Instant::now();
         let mut round_trips = Vec::with_capacity(calls);
         for _ in 0..calls {
             let before = Instant::now();
-            self.proxy
-                .take_byte_array(ByteArray(Bytes::new(data)))
-                .await?;
+            proxy.take_byte_array(ByteArray(Bytes::new(data))).await?;
             round_trips.push(nanos(before.elapsed()));
         }
 
-        Ok(round_trips)
-    }
+        Ok(Calls {
+            round_trips,
+            started,
+            finished: Instant::now(),
+        })
+    })
+}
+
+/// The calls that a client of the round trips made.
+struct Calls {
+    /// How long each call took, from sending it until the reply came, in nanoseconds.
+    round_trips: Vec<u64>,
+    /// When the client started calling.
+    started: Instant,
+    /// When the reply to its last call came.
+    finished: Instant,
+}
+
+/// Connects a client, and makes a proxy to the service at `name` on its connection, which the proxy
+/// keeps open.
+async fn connect(name: &str) -> Result<ServiceProxy<'_>> {
+    let connection = zbus::Connection::session().await?;
+
+    Ok(ServiceProxy::new(&connection, name).await?)
 }
 
 /// Connects a subscriber, and subscribes it to the signals that `rule` matches.
@@ -406,9 +492,10 @@ fn percentile(sorted: &[u64], permille: usize) -> u64 {
 
 /// Ends the process, with `TIMEOUT_EXIT_STATUS`, if it is not dropped within `SCENARIO_TIMEOUT`.
 ///
-/// A broker that loses a message leaves a client waiting for it for good. Only the `rt` and
-/// `macros` features of Tokio are on, so there is no timer to give up with, but a thread of its
-/// own can. It says so on the standard error, as the standard output is for the object only.
+/// A broker that loses a message leaves a client waiting for it for good. The wait can be one that
+/// blocks a thread, such as that for the thread of a client or a subscriber to end, which no timer
+/// of a runtime could cut short, but a thread of its own can. It says so on the standard error, as
+/// the standard output is for the object only.
 struct Watchdog {
     /// Dropping this is what calls the watchdog off.
     _disarm: mpsc::Sender<()>,
