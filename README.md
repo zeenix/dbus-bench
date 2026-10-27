@@ -41,6 +41,9 @@ service, then by each of 20 clients to a service of its own, all at once:
 | [dbus-daemon] | 1.16.2           |      0.133 s |        1.203 s |                       1.17 s |     6.3 MiB |
 | [busd]        | main<sup>1</sup> |      0.071 s |        0.322 s |                       0.30 s |     6.8 MiB |
 
+On the method calls, busd takes 4% longer than dbus-broker with 20 clients (from +2.6 to +6.1%),
+where it took 26% longer before z-galaxy/busd#388, and 15% longer with one client.
+
 Signals, from `cargo run --release --bin fanout`: a burst of 40,000 signals with 1 KiB of data each
 to one subscriber, then a broadcast of 6000 of them to each of 20 subscribers, each subscriber on a
 thread of its own:
@@ -51,12 +54,10 @@ thread of its own:
 | [dbus-daemon] | 1.16.2           |    0.850 s |         1.949 s |                    1.92 s |     5.5 MiB |
 | [busd]        | main<sup>1</sup> |    0.129 s |         0.075 s |                    0.04 s |     6.2 MiB |
 
-busd takes 4% longer than dbus-broker with 20 clients (from +2.6 to +6.1%), where it took 26% longer
-on the zbus and the zruntime that its main branch pins, and 15% longer with one client. It gets the
-signals through faster than dbus-broker: the burst by 26%, where it took 22% longer on that zbus and
-zruntime, and the broadcast by 60%, with 74% less CPU time, as it writes several signals to a
-subscriber with each system call. The memory of dbus-broker is that of its two processes, its
-launcher and the broker proper, together.
+busd gets the signals through faster than dbus-broker: the burst by 26%, where it took 22% longer
+before z-galaxy/busd#388, and the broadcast by 60%, with 74% less CPU time, as it writes several
+signals to a subscriber with each system call. The memory of dbus-broker is that of its two
+processes, its launcher and the broker proper, together.
 [The results](results/2026-10-27-busd-dependency-updates-ryzen-7840u.md) have more on these, on the
 latencies and on the shared phases, where busd takes 18% longer than dbus-broker with 100 clients
 and uses 50% more memory, and on how they were measured.
