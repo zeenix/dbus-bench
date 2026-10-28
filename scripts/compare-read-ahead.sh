@@ -1,16 +1,19 @@
 #!/bin/bash
-# Compares busd on zbus's main branch with busd on z-galaxy/zbus#2090, which has a connection read
-# ahead of each message it receives, along with dbus-broker and dbus-daemon, as far as they are
+# Compares busd on zbus's main branch before and after z-galaxy/zbus#2090, which has a connection
+# read ahead of each message it receives, along with dbus-broker and dbus-daemon, as far as they are
 # installed:
 #
 # * before: busd's main branch at e57b173, on zbus at 7960179, the merge of z-galaxy/zbus#2088,
 #   which #2090 builds on;
-# * after: the same busd on zbus at ZBUS_AFTER_REV, 82992ca by default, the head of
-#   z-galaxy/zbus#2090. That zbus reads as much as the socket of a connection holds into a buffer
-#   of 4 KiB that the connection keeps, and takes each message that is whole in it out of it
-#   without reading again, where zbus's main branch reads the primary header of each message and
-#   then the rest of it, into a `Vec` that it reallocates to the length of the message. A message
-#   longer than the buffer still takes two reads, into an allocation of its exact length;
+# * after: the same busd on zbus at ZBUS_AFTER_REV, 90a0bd1 by default, the merge of
+#   z-galaxy/zbus#2090, after which z-galaxy/busd#396 has busd build on that zbus. The results of
+#   2026-10-28 measured 82992ca, then the head of #2090, whose code 90a0bd1 has, but for the
+#   workflow of zbus's benchmarks, which z-galaxy/zbus#2091 changed. That zbus reads as much as
+#   the socket of a connection holds into a buffer of 4 KiB that the connection keeps, and takes
+#   each message that is whole in it out of it without reading again, where 7960179 reads the
+#   primary header of each message and then the rest of it, into a `Vec` that it reallocates to
+#   the length of the message. A message longer than the buffer still takes two reads, into an
+#   allocation of its exact length;
 # * with NOTRIM=1, before-notrim and after-notrim too: before and after with glibc's trim threshold
 #   raised to 4 MiB, through GLIBC_TUNABLES, so that glibc doesn't give the top of the heap back
 #   to the kernel and take it again. On a 4-vCPU Xeon VM, after had glibc do that 3 to 10 times as
@@ -77,7 +80,7 @@ busd=$checkout/z-galaxy/busd
 # The commits measured: busd's main branch, on zbus's main branch and on z-galaxy/zbus#2090.
 busd_rev=e57b173ff08f6ae62b103b0f9587b254fc15b4ff
 zbus_before=79601795ca566407fdedc8773751436751645e50
-zbus_after=${ZBUS_AFTER_REV:-82992ca2af4d7db3b941ecf09353648810001d8d}
+zbus_after=${ZBUS_AFTER_REV:-90a0bd1bc7ed90ffbba27e61333c61b79098c816}
 # glibc gives the top of the heap back to the kernel once it is larger than this.
 trim_threshold=$((4 * 1024 * 1024))
 
