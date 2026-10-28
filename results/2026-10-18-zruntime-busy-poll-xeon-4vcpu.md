@@ -136,7 +136,7 @@ MODE=forward SECS=3 INTERVAL_US=1000 ./measure-light-traffic.py \
 
 To run these tests on another machine, under load, on one CPU and under light load, along with
 the other comparisons of the busd builds, run
-[`scripts/compare-busd-builds.sh`](../scripts/compare-busd-builds.sh). It leaves out the limits
+[`scripts/compare-busd-builds.sh`][busd-builds]. It leaves out the limits
 above 50 µs and the intervals of 30 and 100 µs.
 
 ## Results
@@ -267,3 +267,5 @@ busd runs.
 * [`busd-busy-poll.diff`](2026-10-18-zruntime-busy-poll-xeon-4vcpu/patches/busd-busy-poll.diff):
   the change to busd that turns the busy polling on. It expects a checkout of zruntime with the
   busy polling next to busd's.
+
+[busd-builds]: https://github.com/zeenix/dbus-bench/blob/75e5dc0/scripts/compare-busd-builds.sh

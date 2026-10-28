@@ -3,7 +3,7 @@
 Measured on 2026-10-19 on the laptop of [busd against dbus-broker and dbus-daemon, on a Ryzen 7
 7840U](2026-10-18-busd-zruntime-ryzen-7840u.md): an AMD Ryzen 7 7840U (8 cores, 16 threads),
 running Fedora 44 with Linux 7.1.13, through
-[`scripts/compare-busd-builds.sh`](../scripts/compare-busd-builds.sh), with the energy counters of
+[`scripts/compare-busd-builds.sh`][busd-builds], with the energy counters of
 the CPU package open to it. The builds are those of [zruntime's busy polling, measured on
 busd](2026-10-18-zruntime-busy-poll-xeon-4vcpu.md), which describes the busy polling, built with
 rustc 1.99.0, with busypoll-off and busypoll20 against z-galaxy/zruntime#52 at 27d5df4. Later
@@ -126,3 +126,5 @@ The directory [of the same name](2026-10-19-zruntime-busy-poll-ryzen-7840u) hold
 `compare-busd-builds.sh` packed them, each as JSON and as the table the script printed:
 `results` (under load), `one-cpu`, and `light-bus-1000`, `light-forward-1000` and `light-bus-50`
 (under light traffic).
+
+[busd-builds]: https://github.com/zeenix/dbus-bench/blob/75e5dc0/scripts/compare-busd-builds.sh

@@ -5,12 +5,12 @@
 # again. It copies environment.txt, which notes the versions, next to the archive, and leaves the
 # tables (.md) out, as the write-up has what they show:
 #
-#     scripts/pack-results.sh $WORK/batched-sends-results-ac6e6fa results/<date>-<what>-<machine>
+#     scripts/pack-results.sh $WORK/results-077f12d results/<date>-<what>-<machine>
 #
 # To get the raw results back, and a comparison in pairs of them:
 #
 #     mkdir runs && tar -xJf results/<date>-<what>-<machine>/runs.tar.xz -C runs
-#     scripts/paired-stats.py runs/calls.json --baseline baseline --candidate batched
+#     scripts/paired-stats.py runs/calls.json --baseline dbus-broker --candidate busd
 
 set -euo pipefail
 

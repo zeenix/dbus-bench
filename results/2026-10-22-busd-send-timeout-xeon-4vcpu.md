@@ -312,8 +312,8 @@ calls.
 
 ## Reproducing
 
-Run [scripts/compare-send-timeout.sh](../scripts/compare-send-timeout.sh). It fetches the commits it
-lacks, makes the four builds of busd and the clients, runs
+Run [scripts/compare-send-timeout.sh][send-timeout], which dbus-bench has up to 75e5dc0. It
+fetches the commits it lacks, makes the four builds of busd and the clients, runs
 [run-benchmarks.sh](2026-10-22-busd-send-timeout-xeon-4vcpu/run-benchmarks.sh) and
 [run-stalls.sh](2026-10-22-busd-send-timeout-xeon-4vcpu/run-stalls.sh), and packs what they write
 into `send-timeout-results-COMMIT.tar.gz` in `$WORK` (by default, `/tmp/send-timeout-bench`), COMMIT
@@ -338,3 +338,5 @@ builds of the first one.
 
 The binaries of the VM were named differently: the timeout build was `busd-timeout-8d57e20`, with
 the same code as e93cec5, and the read-ahead build was `busd-timeout-mq`.
+
+[send-timeout]: https://github.com/zeenix/dbus-bench/blob/75e5dc0/scripts/compare-send-timeout.sh
