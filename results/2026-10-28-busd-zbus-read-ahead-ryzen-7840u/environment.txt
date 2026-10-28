@@ -1,0 +1,10 @@
+date: 2026-10-28T18:17:18Z
+kernel: 7.1.13-200.fc44.x86_64
+cpu: AMD Ryzen 7 7840U w/ Radeon  780M Graphics x 16
+glibc: ldd (GNU libc) 2.43
+rustc: rustc 1.99.0 (b940084d7 2026-09-28)
+cargo: cargo 1.99.0 (5f94df478 2026-08-27)
+dbus-bench: 5ac1c7a937d29f343db0708e922308d6e24d92a4
+clients: zbus 50c54bfdc2b1fbb66d555d41a0cfb3063c014566, zruntime b3bd01d8fc1827c690d2525a157694afd030ea4b
+dbus-broker: dbus-broker 37
+dbus-daemon: D-Bus Message Bus Daemon 1.16.2
