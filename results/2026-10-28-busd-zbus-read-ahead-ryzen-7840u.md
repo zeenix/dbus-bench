@@ -13,12 +13,12 @@ their lock files:
 * **before**: e57b173, busd's main branch as of z-galaxy/busd#395, on zbus 7960179, the merge of
   z-galaxy/zbus#2088, and zruntime b3bd01d;
 * **after**: the same busd on zbus 82992ca of zeenix/zbus, the head of z-galaxy/zbus#2090 when it
-  ran, which 98ad9ce replaced with the same tree. That zbus reads as much as the socket of a connection holds
-  into a buffer of 4 KiB that the connection keeps, and takes each message that is whole in it out
-  of it without reading again, where 7960179 reads the primary header of each message, and then
-  the rest of it, into a `Vec` that it reallocates to the length of the message. A message longer
-  than the buffer, as the calls of 16 KiB are, still takes two reads, into an allocation of its
-  exact length;
+  ran, which 98ad9ce replaced with the same tree. That zbus reads as much as the socket of a
+  connection holds into a buffer of 4 KiB that the connection keeps, and takes each message that
+  is whole in it out of it without reading again, where 7960179 reads the primary header of each
+  message, and then the rest of it, into a `Vec` that it reallocates to the length of the message.
+  A message longer than the buffer, as the calls of 16 KiB are, still takes two reads, into an
+  allocation of its exact length;
 * **before-notrim** and **after-notrim**: before and after with glibc's trim threshold raised to
   4 MiB, through `GLIBC_TUNABLES=glibc.malloc.trim_threshold=4194304`, so that glibc doesn't give
   the top of the heap back to the kernel, and take it again, as it does by default once more than

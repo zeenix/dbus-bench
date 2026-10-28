@@ -23,19 +23,22 @@ fastest brokers, and an unoptimised one is several times slower than any of them
 instead of a byte array, for what checking such bodies costs a broker.
 
 To compare brokers, `scripts/compare-brokers.py` starts each of them, runs the benchmark against
-them a number of times in turn and reports statistics of the results (see its `--help`).
-`scripts/compare-busd-builds.sh` uses it to compare builds of busd with dbus-daemon and
-dbus-broker. The `results` directory holds comparisons made with them: a write-up of each, and a
-directory with its raw results, packed into a `runs.tar.xz`, and whatever else it took to make
-them. `scripts/pack-results.sh` packs the raw results of a run of the compare scripts that way, and
-`scripts/paired-stats.py` makes the comparisons in pairs from them again.
+them a number of times in turn and reports statistics of the results (see its `--help`), as
+`scripts/compare-latency.py` does with the latencies. `scripts/compare.sh` builds busd, from its
+main branch or another commit, and uses them to measure it against dbus-broker and dbus-daemon on
+every workload, and against another commit of busd, if asked to (see its header). The `results`
+directory holds comparisons made with them, and with the scripts that came before it: a write-up of
+each, and a directory with its raw results, packed into a `runs.tar.xz`, and whatever else it took
+to make them. `scripts/pack-results.sh` packs the raw results of a run of `scripts/compare.sh`
+that way, and `scripts/paired-stats.py` makes the comparisons in pairs from them again.
 
 ## Results
 
 Here are the results obtained on my machine (AMD Ryzen 7 7840U w/ 8 cores & 16 threads, 64 GB RAM,
-Fedora 44), as the medians of 60 rounds of the comparison that `scripts/compare-read-ahead.sh`
-runs, on 2026-10-28, each of which runs the benchmarks once against every broker. The clients leave
-the sender out of their messages, as libdbus, GLib and sd-bus clients do, for the broker to set.
+Fedora 44), as the medians of 60 rounds of [a comparison on
+2026-10-28](results/2026-10-28-busd-zbus-read-ahead-ryzen-7840u.md), each of which ran the
+benchmarks once against every broker, as `scripts/compare.sh` does. The clients leave the sender
+out of their messages, as libdbus, GLib and sd-bus clients do, for the broker to set.
 busd is its main branch at
 [077f12d](https://github.com/z-galaxy/busd/commit/077f12d7f0d442b6a81b37ac3aa284ac777dae8e), the
 merge of z-galaxy/busd#396, which builds on zbus's main branch with z-galaxy/zbus#2090: the

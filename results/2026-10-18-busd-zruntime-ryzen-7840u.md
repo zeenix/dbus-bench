@@ -2,7 +2,7 @@
 
 Measured on 2026-10-18 on a laptop with an AMD Ryzen 7 7840U (8 cores, 16 threads), running
 Fedora 44 with Linux 7.1.13, through
-[`scripts/compare-busd-builds.sh`](../scripts/compare-busd-builds.sh), in two runs of one warmup
+[`scripts/compare-busd-builds.sh`][busd-builds], in two runs of one warmup
 round and 15 measured rounds each. The busd builds are those of the comparisons on a 4-vCPU VM,
 [busd on zruntime vs busd on Tokio](2026-10-18-busd-zruntime-xeon-4vcpu.md) and
 [why dbus-daemon leads busd with 20 clients](2026-10-18-busd-dbus-daemon-xeon-4vcpu.md), built
@@ -89,3 +89,5 @@ The [README](../README.md)'s results for this machine, from 2024, have every bro
 s here. The README says to run the client with `cargo run`, which builds it without optimisation,
 while `compare-busd-builds.sh` builds it in release mode. An unoptimised client is a likely reason
 why every broker took about as long then: the client would have been far slower than any of them.
+
+[busd-builds]: https://github.com/zeenix/dbus-bench/blob/75e5dc0/scripts/compare-busd-builds.sh
