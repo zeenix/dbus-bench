@@ -1,0 +1,12 @@
+date: 2026-10-30T20:56:04Z
+kernel: 7.2.13-200.fc44.x86_64
+cpu: AMD Ryzen 7 7840U w/ Radeon  780M Graphics x 16
+glibc: ldd (GNU libc) 2.43
+rustc: rustc 1.99.0 (b940084d7 2026-09-28)
+cargo: cargo 1.99.0 (5f94df478 2026-08-27)
+dbus-bench: d85403c714fd358f463080536acfa88dbdfa1b83
+clients: zbus 6.1.0 https://github.com/z-galaxy/zbus at 50c54bfdc2b1fbb66d555d41a0cfb3063c014566, zruntime 0.2.1 https://github.com/z-galaxy/zruntime at b3bd01d8fc1827c690d2525a157694afd030ea4b
+busd: 3a751a5338f499deaa5d0acdb2b555d8b0ba9907, zbus 6.1.0 https://github.com/z-galaxy/zbus at 90a0bd1bc7ed90ffbba27e61333c61b79098c816, zruntime 0.2.1 https://github.com/z-galaxy/zruntime at aae96ac214183ed6636968a7432e2313b3ea977d
+baseline: b4b8efe476a345f89cd705b8c9330690068eba64, zbus 6.1.0 https://github.com/z-galaxy/zbus at 90a0bd1bc7ed90ffbba27e61333c61b79098c816, zruntime 0.2.1 https://github.com/z-galaxy/zruntime at b3bd01d8fc1827c690d2525a157694afd030ea4b
+dbus-broker: dbus-broker 37
+dbus-daemon: D-Bus Message Bus Daemon 1.16.2
