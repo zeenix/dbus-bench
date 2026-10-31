@@ -1,5 +1,18 @@
 # D-Bus Broker Benchmarking
 
+**The benchmarks have moved** to the projects that they measure, which run them in CI:
+
+* [busd]'s `benches`: `cargo bench --bench bus` routes these workloads through busd on CodSpeed,
+  for every pull request of busd, and `cargo bench --bench compare` compares busd with dbus-broker
+  and dbus-daemon on them, with the clients of this repository and the scripts that drove them,
+  ported to Rust.
+* [zbus]'s `benches`: `message-validate/dicts` checks the body of the dict calls, and
+  `connection/signal-burst` takes a burst of signals off a connection's socket: zbus's share of
+  what these workloads cost busd.
+
+This repository keeps the results of the comparisons made with it, and the code that made them,
+as they were.
+
 This repository attempts to benchmark the performance of D-Bus brokers. It makes simple method calls
 to its own services, using a single and multiple simultaneous service & client pairs. The service
 and the client of each pair have a connection and a thread of their own, as processes of their own
@@ -142,3 +155,4 @@ subscriber takes it off its stream, so the p99 is how long the slowest 1% of the
 [dbus-broker]: https://github.com/bus1/dbus-broker
 [dbus-daemon]: https://gitlab.freedesktop.org/dbus/dbus
 [busd]: https://github.com/z-galaxy/busd
+[zbus]: https://github.com/z-galaxy/zbus
